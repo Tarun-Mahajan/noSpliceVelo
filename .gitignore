@@ -161,3 +161,6 @@ cython_debug/
 
 # ignore directory prototyping
 prototyping/
+
+# ignore like_neurovelo
+like_neurovelo/
