@@ -29,5 +29,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ------------------------------------------------------------------------------
 Portions of this project contain code from scvi-tools 
-(`https://github.com/scverse/scvi-tools`), licensed under the BSD 3-Clause License.
-The BSD 3-Clause License for scvi-tools can be found in the file `licenses/ExampleProject_LICENSE`.
+(`https://github.com/scverse/scvi-tools`), licensed under the BSD 3-Clause 
+"New" or "Revised" License. The BSD 3-Clause License for scvi-tools can be found 
+in the file `external_licenses/scvi_tools_LICENSE`.
