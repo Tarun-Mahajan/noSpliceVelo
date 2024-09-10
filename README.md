@@ -1,2 +1,2 @@
 # noSpliceVelo
-noSpliceVelo uses bursty gene expression to infer RNA velocity without splicing
+noSpliceVelo infers RNA velocity without separating unspliced and spliced transcripts
