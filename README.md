@@ -3,8 +3,8 @@ noSpliceVelo infers RNA velocity without separating unspliced and spliced transc
 
 ## Environment:
 ```bash
-conda create -n noSpliceVelo python=3.10.13
-conda activate noSpliceVelo
+conda create -n noSpliceVelo_env python=3.10.13
+conda activate noSpliceVelo_env
 pip install numpy==1.24.3
 pip install pandas==2.0.1
 pip install matplotlib==3.7.1
