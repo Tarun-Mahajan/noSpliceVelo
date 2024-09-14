@@ -2,8 +2,7 @@
 noSpliceVelo infers RNA velocity without separating unspliced and spliced transcripts
 
 ## Environment:
-```
-
+```bash
 conda create -n noSpliceVelo python=3.10.13
 conda activate noSpliceVelo
 pip install numpy==1.24.3
