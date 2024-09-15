@@ -164,3 +164,6 @@ prototyping/
 
 # ignore like_neurovelo
 like_neurovelo/
+
+# ignore data folder
+data/
