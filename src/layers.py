@@ -99,3 +99,56 @@ class GumbelSoftmax_3D(nn.Module):
         prob = F.softmax(logits, dim=-1)
         y = self.gumbel_softmax(logits, temperature, hard)
         return logits, prob, y
+    
+
+class LatentODE(nn.Module):
+    """
+    A class modelling the latent splicing dynamics.
+
+    Parameters
+    ----------
+    n_latent
+        Dimension of latent space.
+        (Default: 20)
+    n_hidden
+        The dimensionality of the hidden layer for the ODE function.
+        (Default: 128)
+    """
+
+    def __init__(
+        self,
+        n_latent: int = 20,
+        n_hidden: int = 128,
+    ):
+        super().__init__()
+        self.n_latent = n_latent
+        # self.elu = nn.ELU()
+        self.fc1 = nn.Linear(n_latent, n_hidden)
+        self.fc2 = nn.Linear(n_hidden, n_hidden)
+        self.fc3 = nn.Linear(n_hidden, n_latent)
+
+    def forward(self, t: torch.Tensor, x: torch.Tensor):
+        """
+        Compute the gradient at a given time t and a given state x.
+
+        Parameters
+        ----------
+        t
+            A given time point.
+        x
+            A given spliced latent state.
+
+        Returns
+        ----------
+        :class:`torch.Tensor`
+            A tensor
+        """
+        x_in = torch.log(1e-8 + torch.cat((x[..., :int(self.n_latent / 2)], \
+                                           torch.sqrt(x[..., int(self.n_latent / 2):] + 1e-10)), \
+                                           dim=-1))
+        out = self.fc1(x_in)
+        out = F.elu(out)
+        out = self.fc2(out)
+        out = F.elu(out)
+        out = F.softplus(self.fc3(out))
+        return out
