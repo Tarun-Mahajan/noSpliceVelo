@@ -7,7 +7,7 @@ Interestingly, splicing-based RNA velocity methods such as [scVelo](https://scve
 
 Given the popularity of [scvi-tools](https://docs.scvi-tools.org/en/stable/) for count modeling of single-cell RNA sequencing (scRNA-seq) data, we have used its framework for implementing noSpliceVelo. Specifically, we use a deep neural network architecture inspired by the architecture introduced for the method veloVI in [Gayoso, Adam, et al. "Deep generative modeling of transcriptional dynamics for RNA velocity analysis in single cells." Nature methods 21.1 (2024): 50-59.](https://doi.org/10.1038/s41592-023-01994-w), which is also included in [scvi-tools](https://docs.scvi-tools.org/en/latest/api/reference/scvi.external.VELOVI.html). Despite some similarity in the architecture, noSpliceVelo does not require the separation of unspliced and spliced transcripts, which is a key feature of veloVI.
 
-Next, we provide a brief overview of the environment setup, reproducibility, and application to custom scRNA-seq data.
+Next, we provide a brief overview of the environment setup, source code, reproducibility, and application to custom scRNA-seq data.
 
 ## Environment:
 1. Create a new conda environment and install the required packages:
@@ -25,5 +25,8 @@ pip install scvelo==0.2.5
 2. Also install [PyTorch](https://pytorch.org/get-started/previous-versions/); we used version 2.3.1. We recommend using a GPU; we tested with CUDA 12.1.
 3. Additionally, install [scvi-tools](https://docs.scvi-tools.org/en/stable/installation.html). We used version 1.0.4.
 
+## Source code:
+The source code for noSpliceVelo is available in the `src` directory. The main functions are implemented in the `noSpliceVelo.py` file. The `noSpliceVelo` class is inherited from the `scvi.model.SCVI` class, which is the base class for all models in [scvi-tools](https://docs.scvi-tools.org/en/stable/). The `noSpliceVelo` class has the following methods:
+
 ## Reproducibility:
-1. For reproducing the results in the manuscript, pwe have included extensive Jupyter notebooks in the `notebooks` directory. The notebooks are organized as follows:
+1. For reproducing the results in the manuscript, we have included extensive Jupyter notebooks in the `notebooks` directory. The notebooks are organized as follows:
