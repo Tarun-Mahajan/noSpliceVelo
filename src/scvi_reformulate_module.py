@@ -1,3 +1,21 @@
+# Copyright (c) 2024, Tarun Mahajan, Sergei Maslov
+# All rights reserved.
+#
+# This code is licensed under the BSD 3-Clause License.
+# See the LICENSE file for more details.
+
+# ---- Begin Third-Party Copyright Information ----
+#
+# This file incorporates code from scvi-tools (https://github.com/scverse/scvi-tools), 
+# which is licensed under the BSD 3-Clause License.
+
+# Copyright (c) 2024, Adam Gayoso, Romain Lopez, Martin Kim, Pierre Boyeau, Nir Yosef
+# All rights reserved.
+
+# See the `external_licenses/scvi_tools_LICENSE` file for more details.
+#
+# ---- End Third-Party Copyright Information ----
+
 from typing import Callable, Iterable, Literal, Optional
 
 import numpy as np
