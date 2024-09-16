@@ -26,7 +26,17 @@ pip install scvelo==0.2.5
 3. Additionally, install [scvi-tools](https://docs.scvi-tools.org/en/stable/installation.html). We used version 1.0.4.
 
 ## Source code:
-The source code for noSpliceVelo is available in the `src` directory. The main functions are implemented in the `noSpliceVelo.py` file. The `noSpliceVelo` class is inherited from the `scvi.model.SCVI` class, which is the base class for all models in [scvi-tools](https://docs.scvi-tools.org/en/stable/). The `noSpliceVelo` class has the following methods:
+The source code for noSpliceVelo is available in the `src` directory. The main classes and functions are implemented in the `noSpliceVelo_model.py` and `noSpliceVelo_module.py` files. The `noSpliceVelo` class is inherited from the `scvi.model.SCVI` class, which is the base class for all models in [scvi-tools](https://docs.scvi-tools.org/en/stable/).
+
+The main classes and functions for the first variational autoencoder, which is a modified version of scvi, are implemented in the `scvi_modified_capture_efficiency_module.py` and `scvi_modified_capture_efficiency_model.py` files.
 
 ## Reproducibility:
-1. For reproducing the results in the manuscript, we have included extensive Jupyter notebooks in the `notebooks` directory. The notebooks are organized as follows:
+For reproducing the results in the manuscript, we have included extensive Jupyter notebooks in the `notebooks` directory. The following notebooks are available:
+
+1. `pancreas_reproducibility.ipynb`: This notebook provides detailed steps for reproducing Figure 3 from the manuscript, which shows the results from the case study focusing on endocrinogenesis in mouse pancreas. The processed anndata object, with velocities estimated by noSpliceVelo, is available at [Mahajan, Tarun (2024). adata_pancrease_nosplicevelo.h5ad. figshare. Dataset.](https://doi.org/10.6084/m9.figshare.27021841.v1).
+2. `mouse_erythroid_reproducibility.ipynb`: This notebook provides detailed steps for reproducing Figure 4 from the manuscript, which shows the results from the case study focusing on gastrulation in mouse erythroid development. The processed anndata object, with velocities estimated by noSpliceVelo, is available at [Mahajan, Tarun (2024). adata_mouse_erythroid. figshare. Dataset.](https://doi.org/10.6084/m9.figshare.27022324.v2).
+3. `human_erythroid_reproducibility.ipynb`: This notebook provides detailed steps for reproducing Figure 4 from the manuscript, which shows the results from the case study focusing on human erythroid development. The processed anndata object, with velocities estimated by noSpliceVelo, is available at [Mahajan, Tarun (2024). adata_human_erythroid. figshare. Dataset.](https://doi.org/10.6084/m9.figshare.27022330.v1).
+4. Coming soon: a python notebook for reproducing Figure 5.
+
+## Custom data:
+For your custom dataset or a publicly available dataset not 
