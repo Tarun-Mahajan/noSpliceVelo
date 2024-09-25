@@ -66,7 +66,7 @@ class EncoderNew(nn.Module):
     n_cat_list
         A list containing the number of categories
         for each category of interest. Each category will be
-        included using a one-hot encoding
+        included using a one-hot encoding; This feature is currently not used.
     n_layers
         The number of fully-connected hidden layers
     n_hidden
@@ -177,16 +177,14 @@ class DecoderNoiseVelo(nn.Module):
         The number of fully-connected hidden layers
     n_hidden
         The number of nodes per hidden layer
-    dropout_rate
-        Dropout rate to apply to each of the hidden layers
     inject_covariates
         Whether to inject covariates in each layer, or just the first (default).
     use_batch_norm
         Whether to use batch norm in layers
     use_layer_norm
         Whether to use layer norm in layers
-    scale_activation
-        Activation layer to use for px_scale_decoder
+    burst_B_gene
+        Whether to make burst size gene-specific or not
     """
 
     def __init__(
@@ -196,19 +194,13 @@ class DecoderNoiseVelo(nn.Module):
         n_cat_list: Iterable[int] = None,
         n_layers: int = 1,
         n_hidden: int = 128,
-        nclones: int = 4,
-        n_gene_types: int = 2,
         inject_covariates: bool = True,
         use_batch_norm: bool = False,
         use_layer_norm: bool = False,
-        scale_activation_init: Literal["softmax", "softplus", "sigmoid"] = "sigmoid",
         burst_B_gene: bool = False,
     ):
         super().__init__()
         self.n_input = n_input
-        self.hid = 16
-        self.in_head = 16
-        self.out_head = 1
         self.px_decoder = \
             FCLayers(
                 n_in=n_input,
@@ -224,8 +216,6 @@ class DecoderNoiseVelo(nn.Module):
         
 
         self.n_output = n_output
-        self.nclones = nclones
-        self.n_gene_types = n_gene_types
         self.burst_B_gene = burst_B_gene
 
         if not self.burst_B_gene:
@@ -246,26 +236,19 @@ class DecoderNoiseVelo(nn.Module):
     ):
         """The forward computation for a single sample.
          #. Decodes the data from the latent space using the decoder network
-         #. Returns parameters for the ZINB distribution of expression
-         #. If ``dispersion != 'gene-cell'`` then value for that param will be ``None``
+         #. Returns parameters for the NB distribution of expression
         Parameters
         ----------
-        dispersion
-            One of the following
-            * ``'gene'`` - dispersion parameter of NB is constant per gene across cells
-            * ``'gene-batch'`` - dispersion can differ between different batches
-            * ``'gene-label'`` - dispersion can differ between different labels
-            * ``'gene-cell'`` - dispersion can differ for every gene in every cell
         z :
             tensor with shape ``(n_input,)``
-        library_size
-            library size
+        burst_B_
+            tensor for gene-specific burst size
         cat_list
             list of category membership(s) for this sample
         Returns
         -------
         4-tuple of :py:class:`torch.Tensor`
-            parameters for the ZINB distribution of expression
+            burst frequency, mean, variance, burst size, inverse dispersion for NB distribution
         """
         # from latent space to n_hidden space
         px = self.px_decoder(z, *cat_list)
@@ -470,7 +453,6 @@ class VAE(BaseMinifiedModeModuleClass):
             inject_covariates=deeply_inject_covariates,
             use_batch_norm=use_batch_norm_decoder,
             use_layer_norm=use_layer_norm_decoder,
-            scale_activation_init="sigmoid",
             burst_B_gene=burst_B_gene,
         )
 
