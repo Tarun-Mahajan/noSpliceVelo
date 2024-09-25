@@ -403,9 +403,9 @@ class DecoderNoiseVelo(nn.Module):
         if self.decoder_type == "burst":
             if not self.burst_B_gene:
                 burst_B_mat = \
-                    F.softplus(self.px_scale_B_decoder(px)) + 1e-4
+                    F.softplus(self.px_scale_B_decoder(px)) + 1
             else:
-                burst_B_mat = F.softplus(burst_B_) + 1e-4
+                burst_B_mat = F.softplus(burst_B_) + 1
                 # burst_B_mat = F.softplus(burst_B_, threshold=10) + 1
                 burst_B_mat = burst_B_mat.repeat(px.shape[0], 1)
         #         px_r_final = self.px_r_final_decoder(px) * px_final_rate
@@ -413,22 +413,24 @@ class DecoderNoiseVelo(nn.Module):
             library_ = capture_eff.repeat(1, burst_B_mat.shape[1])
             px_r_final = \
                 F.softplus(self.px_r_final_decoder(px)) + \
-                1e-4
+                1e-8
             mu_ = px_r_final * burst_B_mat
-            var_ = mu_ * (1 + burst_B_mat)
+            var_ = mu_ * (1 + burst_B_mat) / 2
+            # mu_ = px_r_final * (burst_B_mat - 1 + 1e-8)
+            # var_ = mu_ * burst_B_mat
             # px_r_final = mu_ / burst_B_mat
 
 
         if self.decoder_type == "mu_var":
             mu_ = F.softplus(self.px_r_final_decoder(px)) + \
-                1e-4
+                1e-8
             # var_ = F.softplus(self.px_scale_B_decoder(px)) + \
             #     mu_
             if not self.burst_B_gene:
-                phi_ = F.softplus(self.px_scale_B_decoder(px)) + \
-                    1e-4
+                phi_ = torch.exp(self.px_scale_B_decoder(px)) + \
+                    1e-8
             else:
-                phi_ = F.softplus(burst_B_) + 1e-4
+                phi_ = torch.exp(burst_B_) + 1e-8
                 # burst_B_mat = F.softplus(burst_B_, threshold=10) + 1
                 phi_ = phi_.repeat(px.shape[0], 1)
             # noise_ = F.softplus(self.px_scale_B_decoder(px)) + \
@@ -445,26 +447,33 @@ class DecoderNoiseVelo(nn.Module):
 
         if self.decoder_type == "mu_var2":
             mu_ = F.softplus(self.px_r_final_decoder(px)) + \
-                1e-4
+                1e-8
             # var_ = F.softplus(self.px_scale_B_decoder(px)) + \
             #     mu_
             if not self.burst_B_gene:
-                px_r_final = F.softplus(self.px_scale_B_decoder(px)) + \
-                    1e-4
+                tmp = (self.px_scale_B_decoder(px))
             else:
-                px_r_final = F.softplus(burst_B_) + 1e-4
+                tmp = (burst_B_)
                 # burst_B_mat = F.softplus(burst_B_, threshold=10) + 1
-                px_r_final = px_r_final.repeat(px.shape[0], 1)
+                tmp = tmp.repeat(px.shape[0], 1)
             # noise_ = F.softplus(self.px_scale_B_decoder(px)) + \
             #     1e-4 
             # phi_ = torch.clamp(phi_, max=10)
-            phi_ = 1 / px_r_final
+            # phi_ = 1 / px_r_final
+            # phi_ = torch.exp(tmp)
+            # phi_ = F.softplus(tmp) + 1e-8
+            px_r_final = F.softplus(tmp) + 1e-8
+            phi_ =  1 / px_r_final
             var_ = mu_ * (1 + mu_ * phi_)
+            # var_ = mu_ + tmp
+            # px_r_final = mu_**2.0 / tmp
             # var_ = mu_ + noise_
+            # px_r_final = torch.exp(-tmp)
             # px_r_final = 1 / phi_
             # px_r_final = mu_ / (var_ / mu_ - 1)
             # px_r_final = mu_ / (var_ / mu_ - 1)
             # burst_B_mat = var_ / mu_ - 1
+            # burst_B_mat = mu_ * phi_
             burst_B_mat = mu_ * phi_
             # burst_B_mat = (var_ - mu_) / mu_
         library_ = capture_eff.repeat(1, px_r_final.shape[1])
