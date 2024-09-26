@@ -1,0 +1,26 @@
+name: noSpliceVelo_cpu
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10.13
+  - pip=23.3.1
+  - ipykernel
+  - pip:
+    - torch==2.3.1
+    - torchvision==0.18.1
+    - torchaudio==2.3.1
+    - --index-url https://download.pytorch.org/whl/cu121
+    - --extra-index-url https://pypi.org/simple
+    - anndata==0.8.0
+    - jax==0.4.20
+    - jaxlib==0.4.20
+    - matplotlib==3.7.1
+    - numpy==1.24.3
+    - pandas==2.0.1
+    - scanpy==1.9.3
+    - scikit-learn==1.2.2
+    - scipy==1.10.1
+    - scvelo==0.2.5
+    - seaborn==0.12.2
+    - scvi-tools==1.0.4
