@@ -35,8 +35,6 @@ from scvi.distributions import NegativeBinomial, Poisson, ZeroInflatedNegativeBi
 from scvi.module.base import BaseMinifiedModeModuleClass, LossOutput, auto_move_data
 from scvi.nn import Encoder, DecoderSCVI, LinearDecoderSCVI, one_hot
 from scvi_clonealign_distributions import NegativeBinomialNew
-from coral_pytorch.losses import corn_loss
-from coral_pytorch.dataset import corn_label_from_logits
 
 torch.backends.cudnn.benchmark = True
 
