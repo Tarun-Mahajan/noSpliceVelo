@@ -1,4 +1,4 @@
-name: noSpliceVelo_cpu
+name: noSpliceVelo_gpu
 channels:
   - conda-forge
   - defaults
