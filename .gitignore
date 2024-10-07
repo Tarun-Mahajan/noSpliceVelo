@@ -167,3 +167,6 @@ like_neurovelo/
 
 # ignore data folder
 data/
+
+# ignore folder like_neurovelo
+/src/like_neurovelo/
