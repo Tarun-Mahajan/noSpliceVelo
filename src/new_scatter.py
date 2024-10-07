@@ -1,3 +1,15 @@
+# ---- Begin Third-Party Copyright Information ----
+#
+# This file incorporates code from scvelo (https://github.com/theislab/scvelo), 
+# which is licensed under the BSD 3-Clause License.
+
+# Copyright (c) 2018, Theis Lab
+# All rights reserved.
+
+# See the `external_licenses/scvelo_LICENSE` file for more details.
+#
+# ---- End Third-Party Copyright Information ----
+
 from inspect import signature
 
 import numpy as np
