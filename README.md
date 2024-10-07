@@ -10,20 +10,25 @@ Given the popularity of [scvi-tools](https://docs.scvi-tools.org/en/stable/) for
 Next, we provide a brief overview of the environment setup, source code, reproducibility, and application to custom scRNA-seq data.
 
 ## Environment:
-1. Create a new conda environment and install the required packages:
-```bash
-conda create -n noSpliceVelo_env python=3.10.13
-conda activate noSpliceVelo_env
-pip install numpy==1.24.3
-pip install pandas==2.0.1
-pip install matplotlib==3.7.1
-pip install seaborn==0.12.2
-pip install anndata==0.8.0
-pip install scanpy==1.9.3
-pip install scvelo==0.2.5
-```
-2. Also install [PyTorch](https://pytorch.org/get-started/previous-versions/); we used version 2.3.1. We recommend using a GPU; we tested with CUDA 12.1.
-3. Additionally, install [scvi-tools](https://docs.scvi-tools.org/en/stable/installation.html). We used version 1.0.4.
+1. CPU:
+  a. For Linux and Windows, create a conda environment using the yaml file `environmnent_cpu.yml` with the command:
+  ```bash
+  conda env create -f environment_cpu.yml
+  ```
+  b. For macOS, create a conda environment using the yaml file `environmnent_cpu_OSX.yml` with the command:
+  ```bash
+  conda env create -f environmnent_cpu_OSX.yml
+  ```
+2. GPU:
+  a. For Linux and Windows, create a conda environment using the yaml file `environmnent_gpu.yml` with the command:
+  ```bash
+  conda env create -f environment_gpu.yml
+  ```
+  b. For macOS, create a conda environment using the yaml file `environmnent_gpu_OSX.yml` with the command:
+  ```bash
+  conda env create -f environmnent_gpu_OSX.yml
+  ```
+3. We recommend using a GPU; we tested with CUDA 12.1.
 
 ## Source code:
 The source code for noSpliceVelo is available in the `src` directory. The main classes and functions are implemented in the `noSpliceVelo_model.py` and `noSpliceVelo_module.py` files. The `noSpliceVelo` class is inherited from the `scvi.model.SCVI` class, which is the base class for all models in [scvi-tools](https://docs.scvi-tools.org/en/stable/).
@@ -39,4 +44,4 @@ For reproducing the results in the manuscript, we have included extensive Jupyte
 4. Coming soon: a python notebook for reproducing Figure 5.
 
 ## Custom data:
-For your custom dataset or a publicly available dataset not 
+For your custom dataset or a publicly available dataset not already analyzed in our manuscript, refer to the notebook `pancreas_example_nosplicevelo.ipynb`
