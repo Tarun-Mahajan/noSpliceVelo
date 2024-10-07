@@ -28,7 +28,7 @@ Next, we provide a brief overview of the environment setup, source code, reprodu
     ```bash
     conda env create -f environmnent_gpu_OSX.yml
     ```
-3. We recommend using a GPU; we tested with CUDA 12.1.
+3. We recommend using a GPU; we tested with CUDA 12.1 on Ubuntu 20.04.6 LTS with an Nvidia GeForce RTX 2080 Ti GPU.
 
 ## Source code:
 The source code for noSpliceVelo is available in the `src` directory. The main classes and functions are implemented in the `noSpliceVelo_model.py` and `noSpliceVelo_module.py` files. The `noSpliceVelo` class is inherited from the `scvi.model.SCVI` class, which is the base class for all models in [scvi-tools](https://docs.scvi-tools.org/en/stable/).
