@@ -11,20 +11,20 @@ Next, we provide a brief overview of the environment setup, source code, reprodu
 
 ## Environment:
 1. CPU:
-  a. For Linux and Windows, create a conda environment using the yaml file `environmnent_cpu.yml` with the command:
+  1. For Linux and Windows, create a conda environment using the yaml file `environmnent_cpu.yml` with the command:
   ```bash
   conda env create -f environment_cpu.yml
   ```
-  b. For macOS, create a conda environment using the yaml file `environmnent_cpu_OSX.yml` with the command:
+  2. For macOS, create a conda environment using the yaml file `environmnent_cpu_OSX.yml` with the command:
   ```bash
   conda env create -f environmnent_cpu_OSX.yml
   ```
 2. GPU:
-  a. For Linux and Windows, create a conda environment using the yaml file `environmnent_gpu.yml` with the command:
+  1. For Linux and Windows, create a conda environment using the yaml file `environmnent_gpu.yml` with the command:
   ```bash
   conda env create -f environment_gpu.yml
   ```
-  b. For macOS, create a conda environment using the yaml file `environmnent_gpu_OSX.yml` with the command:
+  2. For macOS, create a conda environment using the yaml file `environmnent_gpu_OSX.yml` with the command:
   ```bash
   conda env create -f environmnent_gpu_OSX.yml
   ```
