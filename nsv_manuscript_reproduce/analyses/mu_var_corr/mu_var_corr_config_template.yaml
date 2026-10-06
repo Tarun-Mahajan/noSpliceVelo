@@ -1,0 +1,54 @@
+# =============================================================================
+# scVI-smoothed vs naive moments: correlation (mu_var_corr.py)
+#   python mu_var_corr.py mu_var_corr_config_template.yaml
+#   python mu_var_corr.py mu_var_corr_config_template.yaml --datasets mouse_pancreas
+#
+# Per dataset, correlates each layer pair below:
+#   per gene  (over cells), per cell (over genes), global (all entries)
+# and writes everything to ONE h5ad (see the header of mu_var_corr.py):
+#   X = (dataset::gene) x metric;  uns['per_cell'][dataset];  uns['summary']
+# Relative paths are resolved against THIS file's directory.
+# =============================================================================
+
+out_h5ad: ./results/mu_var_corr/mu_var_scvi_vs_naive_corr.h5ad
+
+# quantity: [layer_a, layer_b]   (metric names are <quantity>_<method>[_<transform>])
+pairs:
+  mu:  [mu_scvi_smooth,  mu_naive_smooth]
+  var: [var_scvi_smooth, var_naive_smooth]
+
+# Applied to BOTH layers of a pair before correlating: none | sqrt | log1p.
+# var is compared on the standard-deviation scale, sqrt(var); quantities not
+# listed get none. (Spearman is unaffected; Pearson and log1p-Pearson change.)
+pre_transform:
+  var: sqrt
+
+methods: [pearson, spearman]
+# Pearson is computed on each transform; Spearman is rank-based, so once only.
+# (mu/var span orders of magnitude; log1p stops a few high values dominating r.)
+transforms: [none, log1p]
+
+per_cell: true        # also correlate each cell's profile across genes
+min_valid: 10         # min finite (a, b) pairs for a correlation, else NaN
+skip_failed: false    # true -> log and skip a dataset that errors (missing layer, bad path)
+
+# Applied to every dataset; any key can be overridden per dataset.
+defaults:
+  gene_names_col: null   # var column with display names (null -> var_names)
+  gene_query: null       # e.g. "reliable_velo_gene == True"  (pandas eval on var)
+  cell_query: null       # e.g. "clusters != 'Ductal'"        (pandas eval on obs)
+  # layers:              # per-dataset layer-name override, same shape as `pairs`
+  #   mu: [mu_scvi_smooth, mu_naive_smooth]
+
+# One entry per dataset: either a bare path, or a mapping with `h5ad` + overrides.
+# Input: the compute_velo_run.py output, which carries all four layers
+# (paths relative to this file, i.e. analyses/mu_var_corr/).
+datasets:
+  mouse_pancreas:
+    h5ad: ../../data/Pancreas_studentT_time/adata_nosplicevelo_vote.h5ad
+    gene_names_col: Gene_Symbol      # pancreas var_names are Ensembl IDs
+
+  human_bonemarrow:
+    h5ad: ../../data/BoneMarrow_studentT_time/adata_nosplicevelo_vote.h5ad
+
+  dynamo_mouse_neural: ../../data/dynamo_mouse_neural_studentT_time/adata_nosplicevelo_vote.h5ad

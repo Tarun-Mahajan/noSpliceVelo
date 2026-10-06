@@ -1,0 +1,87 @@
+# =============================================================================
+# Per-gene direction benchmark (gene_direction_benchmark.py)
+#   python gene_direction_benchmark.py gene_direction_config_template.yaml   (from analyses/gene_direction/)
+#
+# Reads the CBDir global config for datasets, edges, cluster maps and every
+# method's h5ad / vkey / gene_names_col / gene_query, so the genes are scored on
+# exactly the transitions in the CBDir figures.
+# =============================================================================
+
+cbdir_global_config: ../../velocity_metrics/cbdir_global_config_4throot.yaml   # relative to this file;
+# method configs and h5ad paths inside it resolve relative to velocity_metrics/
+out_dir: ./results/gene_direction
+
+# Subsets (null = everything in the CBDir config)
+methods: null          # e.g. [nSV, scVelo-dynamical, veloVI]
+datasets: null         # e.g. [mouse_pancreas]
+
+# The method whose h5ad supplies the cells, kNN graph, clusters and truth layer.
+# Its graph defines the boundary cells. A splicing h5ad with spliced/unspliced layers
+# (e.g. scVelo-dynamical) also gives the u/s features without a separate read.
+reference_method: scVelo-dynamical
+# The method compared with every other one in the agreement tables (default nSV).
+compare_to: nSV
+
+# null -> the CBDir min_target_neighbors (3 in your global config)
+min_target_neighbors: null
+
+truth:
+  # Which expression the true direction is measured on (same layer for every method).
+  # auto: layers['counts'] -> spliced+unspliced -> spliced -> X; counts are
+  # normalised to the median library size and log1p-transformed.
+  layer: auto
+  transform: auto      # auto | lognorm | none
+  smooth: true         # one kNN-averaging step on the reference graph (like Ms)
+  # cluster : d = (mean over B - mean over A) / sd      (default; the known direction)
+  # boundary: d = (mean over boundary T - mean over boundary S) / sd
+  scope: cluster
+  # Score a gene only when the two definitions agree in sign (drops genes that peak
+  # or dip at the boundary, whose single direction across A -> B is undefined).
+  require_consistent_truth: true
+  d_min: 0.25          # primary |d| threshold for "has a direction"
+  d_sweep: [0.1, 0.25, 0.5, 1.0]
+  min_detect_frac: 0.05   # gene detected in >= 5% of the boundary cells
+  min_source_cells: 10    # skip edges with fewer boundary source cells
+
+# Exclude genes carrying any flag (below) from the scores; they stay in gd_long.csv.
+exclude_flagged: false
+
+# Gene sets. own = finite velocity in every matched cell AND this query. A string applies
+# to every method; a {method: query} mapping overrides per method; methods without an
+# entry fall back to their CBDir gene_query, then var['velocity_genes'].
+own_gene_query: "reliable_velo_gene == True"
+
+# Per-method var columns carried into the feature analysis (fnmatch patterns).
+feature_cols:
+  nSV: [fit_r2_complete_mu, fit_r2_complete_var, sep_log2_z, sep_log2_z_naive, up_bow_z_fit,
+        dispersions_norm]
+  scVelo-dynamical: [fit_likelihood, fit_alpha, fit_beta, fit_gamma, fit_scaling]
+  veloVI: ["velocity_r2", "*_score"]
+
+# Gene-name column used to match genes across methods. Precedence:
+#   per_dataset.<dataset>.gene_names_col.<method>  >  gene_names_col_override.<method>
+#   >  the method's CBDir gene_names_col  >  var_names
+gene_names_col_override: {}
+vkey_override: {}             # e.g. {nSV: velocity_mu_vote}
+
+per_dataset:
+  mouse_pancreas:
+    gene_names_col:
+      nSV: Gene_Symbol               # nSV pancreas: var_names are Ensembl IDs; all others use symbols
+    # reference_adata: null          # a different h5ad for cells/graph/truth (e.g. one
+    #                                # with all genes); must share barcodes and gene names
+    # reference_gene_names_col: null
+    # splice_adata: null             # spliced/unspliced source for the u/s features; default:
+    #                                # the reference, else the first method h5ad that has them
+    flag_genes:
+      cell_cycle: ./cc_genes/cell_cycle_mouse.gmt:TIROSH_S_MOUSE,TIROSH_G2M_MOUSE
+  human_bonemarrow:
+    flag_genes:
+      cell_cycle: ./cc_genes/cell_cycle_human.gmt:TIROSH_S_HUMAN,TIROSH_G2M_HUMAN
+  human_erythroid:
+    flag_genes:
+      cell_cycle: ./cc_genes/cell_cycle_human.gmt:TIROSH_S_HUMAN,TIROSH_G2M_HUMAN
+
+effect_bins: [0.1, 0.25, 0.5, 1.0, 2.0, .inf]
+n_boot: 1000
+seed: 0
