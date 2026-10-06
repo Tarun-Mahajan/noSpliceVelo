@@ -1,0 +1,109 @@
+# =============================================================================
+# score_gene_fit_v3 config (gene fit quality scoring for noSpliceVelo)
+#   python score_gene_fit_v3_run.py score_gene_fit_v3_config_template_.yaml
+#
+# For each dataset, the h5ad is loaded from <dir_path>/<h5ad_filename>,
+# gene-fit scores are computed (task 1: mean-null R2, task 2: quadratic-vs-line),
+# and results are written to <out_dir>/ (CSV, plots, optional h5ad).
+# Input = output of compute_velo_run.py (adata_nosplicevelo_vote.h5ad + the
+# per-state probabilities prob_state_avg_nosplicevelo_vote.npy in dir_path).
+# Datasets run in sequence; a failure is logged and the run continues.
+# =============================================================================
+
+log_file: ./logs/score_gene_fit_v3_run.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+defaults:
+  continue_from_prev: false
+
+  # ---------- input filenames (resolved relative to dir_path) ----------------
+  h5ad_filename: adata_nosplicevelo_vote.h5ad
+  prob_state_filename: prob_state_avg_nosplicevelo_vote.npy
+
+  # ---------- layer names ----------------------------------------------------
+  mu_obs_layer: mu_scvi_smooth
+  var_obs_layer: var_scvi_smooth
+  mu_fit_layer: mu_fit
+  var_fit_layer: var_fit
+
+  # ---------- task 1: complete-data mean-null R2 -----------------------------
+  combine: min                        # "min" | "mean"
+  thresh_mu_meannull: 0.01
+  thresh_var_meannull: 0.01
+
+  # ---------- task 2: per-branch quadratic-vs-line (ODR) ---------------------
+  up_states: [0, 1]
+  down_states: [2, 3]
+  branch_min_cells: 100
+  branch_min_range_ratio: 3.0
+  branch_agg: max                     # "max" | "min" | "weighted"
+
+  # ---------- significance ---------------------------------------------------
+  run_ftest: true
+  fdr_alpha: 0.05
+  run_cv: true
+  cv_folds: 5
+  cv_seed: 0
+
+  # ---------- task 4: bow + signed separation (gene_bow_separation.py) -------
+  # Per-branch "bow" = how far the branch's middle sits above (+, concave) or
+  # below (-, convex) the chord joining its ends, in branch-standardized units;
+  # compared between observed and model-fitted medians in the same bins, with a
+  # block-bootstrap SE that respects the kNN smoothing. Plus the signed
+  # separation: fraction of matched-mean bins where var(up) > var(down).
+  # These columns (sep_log2_z_naive, up_bow_*) feed the gene_query of step 4.
+  bow_scores: true
+  bow_split: auto                     # auto | posterior | velocity_sign
+  bow_velocity_layer: velocity_mu     # used only by velocity_sign
+  mu_naive_layer: mu_naive_smooth     # model-free kNN mean/var for sep_*_naive
+  var_naive_layer: var_naive_smooth
+  bow_embedding: X_latent             # obsm key for bootstrap blocks (-> X_pca)
+  bow_block_size: 30                  # ~ the kNN smoothing k
+  bow_n_boot: 100
+  bow_n_bins: 8
+  bow_min_cells: null                 # null -> branch_min_cells
+  bow_min_per_bin: 8
+  bow_z_thresh: 2.0                   # misfit: opposite sign and |z_diff| > this
+  signed_sep_n_bins: 10
+  signed_sep_min_per_bin: 10
+
+  # ---------- computation ----------------------------------------------------
+  n_jobs: 6                         # parallel workers (-1 = all cores)
+  progress_every: 500
+
+  # ---------- output ---------------------------------------------------------
+  write_h5ad: true
+  # out_csv: null                     # auto: <dir_path>/gene_fit_scores_v3.csv
+  # out_dir: null                     # auto: <dir_path>
+
+# One block per dataset. `dir_path` is REQUIRED; `name` is cosmetic.
+datasets:    
+  - name: human_bonemarrow_studentT_time
+    dir_path: ../data/BoneMarrow_studentT_time
+    out_dir: ../data/BoneMarrow_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+    
+  - name: mouse_pancreas_studentT_time
+    dir_path: ../data/Pancreas_studentT_time
+    out_dir: ../data/Pancreas_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+    
+    
+  - name: dynamo_mouse_neural_studentT_time
+    dir_path: ../data/dynamo_mouse_neural_studentT_time
+    out_dir: ../data/dynamo_mouse_neural_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+    
+    
+  - name: mouse_erythroid_studentT_time
+    dir_path: ../data/mouse_erythroid_studentT_time
+    out_dir: ../data/mouse_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+    
+  - name: mouse_organoid_studentT_time
+    dir_path: ../data/unitvelo_mouse_organoid_studentT_time
+    out_dir: ../data/unitvelo_mouse_organoid_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+    
+  - name: mouse_dentategyrus_studentT_time
+    dir_path: ../data/dentategyrus_new_studentT_time
+    out_dir: ../data/dentategyrus_new_studentT_time/nosplicevelo_score_gene_fit_v3_vote
+
+  - name: human_erythroid_studentT_time
+    dir_path: ../data/human_erythroid_studentT_time
+    out_dir: ../data/human_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_vote

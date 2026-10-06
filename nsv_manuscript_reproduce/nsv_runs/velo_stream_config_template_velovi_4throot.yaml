@@ -1,0 +1,110 @@
+# =============================================================================
+# Velocity Stream Pipeline Config
+#   python generate_velo_stream_run.py velo_stream_config_template.yaml
+#
+# Datasets run in sequence. A detailed, timestamped log (all pipeline stdout,
+# tracebacks; progress bars filtered out) is written to `log_file`. A failure
+# in one dataset is logged and the run continues with the next. Each result
+# saves a stream plot, a pseudotime plot, and optionally the updated AnnData.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `velo_stream_pipeline_YYYYmmdd_HHMMSS.log` is created in the working directory.
+# log_file: ./logs/velo_stream_pipeline_tfvelo.log
+# log_file: ./logs/velo_stream_pipeline_velovi.log
+log_file: ./logs/velo_stream_pipeline_velovi_4throot.log
+# log_file: ./logs/velo_stream_pipeline_velovae.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the pipeline's built-in defaults.
+defaults:
+  xkey: Ms                  # Layer key for expression coordinates (e.g. Ms, spliced, X)
+  vkey: velocity            # Layer key for velocity values (e.g. velocity)
+  basis: umap               # Embedding basis to plot on (e.g. umap, tsne)
+  n_neighbors: 30           # Number of neighbors for graph construction
+  rep: X_pca                # Representation used for neighbors (e.g. X_pca)
+  label_col: clusters       # Column in adata.obs to color cells by
+  density: 3                # Stream plot arrow density
+  approx: false             # Whether to use approximate velocity graph
+  sqrt_transform: true      # Whether to use sqrt transformation in velocity graph
+  compute_pseudotime: true  # Compute and plot velocity pseudotime
+  save_adata: true         # Save the updated AnnData to disk
+  output_filename: adata_velovi_stream.h5ad
+  gene_query: null          # Optional pandas query on adata.var to subset genes
+  sqrt_transform_func: "x**(1/4)"
+
+# One block per dataset. `adata_path` and `dir_path` are REQUIRED; `name` is
+# cosmetic. Any key from `defaults:` may be repeated here to override it.
+datasets:
+    ## all velovi plots
+  - name: mouse_pancreas_velovi
+    adata_path: ../data/Pancreas/adata_velovi.h5ad
+    dir_path: ../data/Pancreas/velovi_4throot
+    gene_query: "velocity_genes == True"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    
+  - name: human_bonemarrow_velovi
+    adata_path: ../data/BoneMarrow/adata_velovi.h5ad
+    dir_path: ../data/BoneMarrow/velovi_4throot
+    gene_query: "velocity_genes == True"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    basis: tsne
+    
+  - name: mouse_dentategyrus_velovi
+    adata_path: ../data/dentategyrus_new/adata_velovi.h5ad
+    dir_path: ../data/dentategyrus_new/velovi_4throot
+    gene_query: "velocity_genes == True"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    label_col: cell_type
+    
+  - name: dynamo_mouse_neural_velovi
+    adata_path: ../data/dynamo_mouse_neural/adata_velovi.h5ad
+    dir_path: ../data/dynamo_mouse_neural/velovi_4throot
+    gene_query: "velocity_genes == True"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    label_col: time
+
+  - name: mouse_erythroid_velovi_without_murk
+    adata_path: ../data/mouse_erythroid/adata_velovi.h5ad
+    dir_path: ../data/mouse_erythroid/velovi_4throot_without_murk
+    gene_query: "(velocity_genes == True) & (MURK_gene == False)"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    label_col: celltype
+    
+  - name: mouse_organoid_velovi
+    adata_path: ../data/unitvelo_mouse_organoid/adata_velovi.h5ad
+    dir_path: ../data/unitvelo_mouse_organoid/velovi_4throot
+    gene_query: "velocity_genes == True"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    label_col: cell_type
+    
+  - name: human_erythroid_velovi_without_murk
+    adata_path: ../data/human_erythroid/adata_velovi.h5ad
+    dir_path: ../data/human_erythroid/velovi_4throot_without_murk
+    gene_query: "(velocity_genes == True) & (MURK_gene == False)"
+    xkey: Ms
+    vkey: velocity
+    output_filename: adata_velovi_stream.h5ad
+    label_col: celltype
+    
+#   - name: human_hematopoiesis_velovi
+#     adata_path: ../data/dynamo/adata_velovi.h5ad
+#     dir_path: ../data/dynamo/velovi_4throot
+#     gene_query: "velocity_genes == True"
+#     xkey: Ms
+#     vkey: velocity
+#     output_filename: adata_velovi_stream.h5ad
+#     label_col: cell_type
+

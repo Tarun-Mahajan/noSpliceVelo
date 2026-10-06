@@ -1,0 +1,74 @@
+# =============================================================================
+# noSpliceVelo pipeline config (step 1: train both VAEs)
+# -----------------------------------------------------------------------------
+# Run from nsv_runs/:
+#     python nsv_run_pipeline.py nsv_config_runs_studentT_time_template.yaml
+#
+# Each dataset is processed in sequence. A detailed, timestamped log (including
+# all pipeline stdout and any tracebacks) is written to `log_file`. If one
+# dataset fails, it is logged and the run continues with the next one.
+# Relative paths are resolved from the working directory (nsv_runs/).
+# =============================================================================
+
+# Where to write the detailed run log (optional).
+# If omitted, a timestamped file `nsv_pipeline_YYYYmmdd_HHMMSS.log` is created
+# in the current working directory.
+log_file: ./logs/nsv_pipeline_run.log
+
+# Optional defaults applied to EVERY dataset. Per-dataset values override these.
+# The values below are the ones used for the manuscript (and the built-in defaults).
+defaults:
+  continue_from_prev: false   # reuse saved SCVIModified + noSpliceVelo checkpoints if present
+  n_hidden_scvi: 64           # SCVIModified hidden width
+  n_latent_scvi: 10           # SCVIModified latent dim
+  n_hidden_nsv: 64            # noSpliceVelo hidden width
+  n_latent_nsv: 10            # noSpliceVelo latent dim
+  n_epochs_kl_warmup: 1000    # KL warmup epochs (forced to 0 when resuming noSpliceVelo)
+  batch_size: 512             # training minibatch size (both models)
+  use_emp_total_count: false  # true -> total_count = int(median(counts.sum(1))/0.1); false -> 1e4
+  use_time_dependence: true   # shared per-cell factor omega on burst frequency and size of the
+                              # final up-branch state (Methods, eq. time dependence); true for all
+                              # manuscript runs; false fixes omega = 1
+  time_loss: 0.1              # weight of the penalty keeping omega near 1 (lambda_omega)
+  # max_epochs_scvi: 10000    # epoch caps (early stopping usually ends training first);
+  # max_epochs_nsv: 300000    # lower them only for smoke tests (see tests/)
+  # Other accepted keys: n_layers, n_layers_scvi, n_layers_nsv, w_sep, match_bottom_left,
+  # no_smoothing (see run_nsv_pipeline docstring).
+
+# One block per dataset. `adata_path` and `dir_path` are REQUIRED; `name` is
+# cosmetic (used in the log). Any of the keys under `defaults:` may be repeated
+# here to override the default for that dataset. `adata_path` is the object
+# written by preprocessing/prepare_adata.py; `dir_path` receives the two model
+# checkpoints and is the input folder of compute_velo_run.py.
+# batch_size 256 was used for the three smallest datasets.
+datasets:
+  - name: human_bonemarrow_studentT_time
+    adata_path: ../data/BoneMarrow/adata_pan.h5ad
+    dir_path: ../data/BoneMarrow_studentT_time
+
+  - name: mouse_pancreas_studentT_time
+    adata_path: ../data/Pancreas/adata_pan.h5ad
+    dir_path: ../data/Pancreas_studentT_time
+    batch_size: 256
+
+  - name: dynamo_mouse_neural_studentT_time
+    adata_path: ../data/dynamo_mouse_neural/adata_pan.h5ad
+    dir_path: ../data/dynamo_mouse_neural_studentT_time
+    batch_size: 256
+
+  - name: mouse_erythroid_studentT_time
+    adata_path: ../data/mouse_erythroid/adata_pan.h5ad
+    dir_path: ../data/mouse_erythroid_studentT_time
+
+  - name: mouse_organoid_studentT_time
+    adata_path: ../data/unitvelo_mouse_organoid/adata_pan.h5ad
+    dir_path: ../data/unitvelo_mouse_organoid_studentT_time
+    batch_size: 256
+
+  - name: mouse_dentategyrus_studentT_time
+    adata_path: ../data/dentategyrus_new/adata_pan.h5ad
+    dir_path: ../data/dentategyrus_new_studentT_time
+
+  - name: human_erythroid_studentT_time
+    adata_path: ../data/human_erythroid/adata_pan.h5ad
+    dir_path: ../data/human_erythroid_studentT_time

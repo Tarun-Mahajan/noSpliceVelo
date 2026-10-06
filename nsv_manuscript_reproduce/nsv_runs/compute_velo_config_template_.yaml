@@ -1,0 +1,58 @@
+# =============================================================================
+# compute_velo config (noSpliceVelo velocity from trained models)
+#   python compute_velo_run.py compute_velo_config_template.yaml
+#
+# For each dataset, the model is loaded from <dir_path>/<model_filename>, the
+# velocity layers/fields are computed, and the result is written back into the
+# SAME folder as <output_filename> (+ per-state probabilities as <probs_filename>).
+# Datasets run in sequence; a failure is logged and the run continues.
+# =============================================================================
+log_file: ./logs/compute_velo_run.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the built-in defaults.
+defaults:
+  continue_from_prev: false        # if adata_nosplicevelo.h5ad exists, skip
+  nboot: 10                        # posterior-predictive bootstrap repeats
+  prob_thresh: 0.5
+  rep: X_pca                       # obsm key for the neighbor graph (falls back to X_latent, then PCA)
+  n_neighbors: 15
+  cell_batch_size: 4096            # host-RAM bound (cells per model call)
+  gpu_batch_size: 1024              # GPU bound (dataloader minibatch)
+  model_filename: model_nosplicevelo.pt
+  output_filename: adata_nosplicevelo_vote.h5ad
+  probs_filename: prob_state_avg_nosplicevelo_vote.npy
+  save_probs: true
+  # in the compute_velo config, per dataset or under defaults:
+  state_reduction: both   # or: soft | argmax_perboot | argmax_stable
+  extra_reductions: [vote, vote_knn, tempered]
+  knn_rep: X_latent                # same graph family that smooths mu_scvi / var_scvi
+  knn_k: 30
+  knn_n_iter: 1
+  # temper_taus: [2, 4, 8]
+  temper_taus: [2]
+
+# One block per dataset. `dir_path` (the folder containing the trained model)
+# is REQUIRED; `name` is cosmetic.
+datasets:
+  - name: human_bonemarrow_studentT_time
+    dir_path: ../data/BoneMarrow_studentT_time
+
+  - name: mouse_pancreas_studentT_time
+    dir_path: ../data/Pancreas_studentT_time
+
+  - name: dynamo_mouse_neural_studentT_time
+    dir_path: ../data/dynamo_mouse_neural_studentT_time
+    cell_batch_size: 1024
+
+  - name: mouse_erythroid_studentT_time
+    dir_path: ../data/mouse_erythroid_studentT_time
+    
+  - name: mouse_organoid_studentT_time
+    dir_path: ../data/unitvelo_mouse_organoid_studentT_time
+    
+  - name: mouse_dentategyrus_studentT_time
+    dir_path: ../data/dentategyrus_new_studentT_time
+    
+  - name: human_erythroid_studentT_time
+    dir_path: ../data/human_erythroid_studentT_time

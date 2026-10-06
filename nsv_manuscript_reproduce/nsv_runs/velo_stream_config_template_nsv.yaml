@@ -1,0 +1,112 @@
+# =============================================================================
+# Velocity Stream Pipeline Config
+#   python generate_velo_stream_run.py velo_stream_config_template.yaml
+#
+# Datasets run in sequence. A detailed, timestamped log (all pipeline stdout,
+# tracebacks; progress bars filtered out) is written to `log_file`. A failure
+# in one dataset is logged and the run continues with the next. Each result
+# saves a stream plot, a pseudotime plot, and optionally the updated AnnData.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `velo_stream_pipeline_YYYYmmdd_HHMMSS.log` is created in the working directory.
+log_file: ./logs/velo_stream_pipeline_nsv_run.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the pipeline's built-in defaults.
+defaults:
+  xkey: mu_scvi_smooth                  # Layer key for expression coordinates (e.g. Ms, spliced, X)
+  vkey: velocity_mu_vote            # Layer key for velocity values (e.g. velocity)
+  basis: umap               # Embedding basis to plot on (e.g. umap, tsne)
+  n_neighbors: 30           # Number of neighbors for graph construction
+  rep: X_pca                # Representation used for neighbors (e.g. X_pca)
+  label_col: clusters       # Column in adata.obs to color cells by
+  density: 3                # Stream plot arrow density
+  approx: false             # Whether to use approximate velocity graph
+  sqrt_transform: true      # Whether to use sqrt transformation in velocity graph
+  compute_pseudotime: true  # Compute and plot velocity pseudotime
+  save_adata: true         # Save the updated AnnData to disk
+  output_filename: adata_nosplicevelo_stream.h5ad
+  gene_query: null          # Optional pandas query on adata.var to subset genes
+  quant_filter_col: dispersions_norm
+  q_: 0.2
+  filter_by_latent_time: false
+  scale_velo: false
+  scale_mu: false
+  scale_type: mean_abs
+  sqrt_transform_func: "x**(1/4)"
+
+# One block per dataset. `adata_path` and `dir_path` are REQUIRED; `name` is
+# cosmetic. Any key from `defaults:` may be repeated here to override it.
+datasets:
+
+  - name: human_bonemarrow_nsv_studentT_time
+    adata_path: ../data/BoneMarrow_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/BoneMarrow_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    
+    
+  - name: mouse_pancreas_nsv_studentT_time
+    adata_path: ../data/Pancreas_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/Pancreas_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    
+    
+  - name: dynamo_mouse_neural_nsv_studentT_time
+    adata_path: ../data/dynamo_mouse_neural_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/dynamo_mouse_neural_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    label_col: time
+
+  - name: mouse_organoid_nsv_studentT_time
+    adata_path: ../data/unitvelo_mouse_organoid_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/unitvelo_mouse_organoid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    label_col: cell_type
+
+  - name: mouse_dentategyrus_nsv_studentT_time
+    adata_path: ../data/dentategyrus_new_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/dentategyrus_new_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    label_col: cell_type
+    
+  - name: mouse_erythroid_nsv_studentT_time
+    adata_path: ../data/mouse_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/mouse_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote_without_murk
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    label_col: celltype
+    filter_by_latent_time: true
+    latent_time_col: time_latent
+    boolean_gene_col: MURK_gene
+    leiden_res: 1.2
+
+  - name: human_erythroid_nsv_studentT_time
+    adata_path: ../data/human_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_vote/adata_nosplicevelo_vote.h5ad
+    dir_path: ../data/human_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote_without_murk
+    gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (sep_log2_z_naive.isna() | sep_log2_z_naive > -2.0) & (up_bow_z_fit.isna() | up_bow_z_fit <= 2.0 | up_bow_obs > 0.0) & (up_bow_misfit == False) & ((dispersions_norm >= @quant_) & (dispersions_norm >= 1.0))"
+    xkey: mu_scvi_smooth
+    vkey: velocity_mu_vote
+    output_filename: adata_nosplicevelo_stream.h5ad
+    label_col: celltype
+    filter_by_latent_time: true
+    latent_time_col: time_latent
+    boolean_gene_col: MURK_gene
+    leiden_res: 1.2

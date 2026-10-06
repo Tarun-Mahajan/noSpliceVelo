@@ -1,0 +1,121 @@
+# =============================================================================
+# Velocity Stream Pipeline Config
+#   python generate_velo_stream_run.py velo_stream_config_template.yaml
+#
+# Datasets run in sequence. A detailed, timestamped log (all pipeline stdout,
+# tracebacks; progress bars filtered out) is written to `log_file`. A failure
+# in one dataset is logged and the run continues with the next. Each result
+# saves a stream plot, a pseudotime plot, and optionally the updated AnnData.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `velo_stream_pipeline_YYYYmmdd_HHMMSS.log` is created in the working directory.
+# log_file: ./logs/velo_stream_pipeline_tfvelo.log
+# log_file: ./logs/velo_stream_pipeline_tfvelo.log
+log_file: ./logs/velo_stream_pipeline_tfvelo_4throot.log
+# log_file: ./logs/velo_stream_pipeline_velovae.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the pipeline's built-in defaults.
+defaults:
+  xkey: M_total                  # Layer key for expression coordinates (e.g. Ms, spliced, X)
+  vkey: velocity            # Layer key for velocity values (e.g. velocity)
+  basis: umap               # Embedding basis to plot on (e.g. umap, tsne)
+  n_neighbors: 30           # Number of neighbors for graph construction
+  rep: X_pca                # Representation used for neighbors (e.g. X_pca)
+  label_col: clusters       # Column in adata.obs to color cells by
+  density: 3                # Stream plot arrow density
+  approx: false             # Whether to use approximate velocity graph
+  sqrt_transform: true      # Whether to use sqrt transformation in velocity graph
+  compute_pseudotime: true  # Compute and plot velocity pseudotime
+  save_adata: true         # Save the updated AnnData to disk
+  output_filename: adata_tfvelo_stream.h5ad
+  gene_query: null          # Optional pandas query on adata.var to subset genes
+  sqrt_transform_func: "x**(1/4)"
+
+# One block per dataset. `adata_path` and `dir_path` are REQUIRED; `name` is
+# cosmetic. Any key from `defaults:` may be repeated here to override it.
+datasets:
+    ## tfvelo
+  # - name: mouse_pancreas_tfvelo
+  #   adata_path: ../data/Pancreas/adata_tfvelo.h5ad
+  #   dir_path: ../data/Pancreas/tfvelo_4throot
+  #   gene_query: "~fit_scaling_y.isna()"
+  #   xkey: M_total
+  #   vkey: velocity
+  #   output_filename: adata_tfvelo_stream.h5ad
+  #   new_layers:                                                                                    
+  #     - layer_name: velocity                                                                       
+  #       expression: "adata.layers['velo_hat'] / np.expand_dims(np.array(adata.var['fit_scaling_y']), 0).repeat(adata.shape[0], axis=0)"
+
+    # all tfvelo plots
+  - name: mouse_pancreas_tfvelo
+    adata_path: ../data/Pancreas/adata_tfvelo.h5ad
+    dir_path: ../data/Pancreas/tfvelo_4throot
+    gene_query: "~fit_scaling_y.isna()"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    
+  - name: human_bonemarrow_tfvelo
+    adata_path: ../data/BoneMarrow/adata_tfvelo.h5ad
+    dir_path: ../data/BoneMarrow/tfvelo_4throot
+    gene_query: "~fit_scaling_y.isna()"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    basis: tsne
+    
+  - name: mouse_dentategyrus_tfvelo
+    adata_path: ../data/dentategyrus_new/adata_tfvelo.h5ad
+    dir_path: ../data/dentategyrus_new/tfvelo_4throot
+    gene_query: "~fit_scaling_y.isna()"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    label_col: cell_type
+    
+  - name: dynamo_mouse_neural_tfvelo
+    adata_path: ../data/dynamo_mouse_neural/adata_tfvelo.h5ad
+    dir_path: ../data/dynamo_mouse_neural/tfvelo_4throot
+    gene_query: "~fit_scaling_y.isna()"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    label_col: time
+
+  - name: mouse_erythroid_tfvelo_without_murk
+    adata_path: ../data/mouse_erythroid/adata_tfvelo.h5ad
+    dir_path: ../data/mouse_erythroid/tfvelo_4throot_without_murk
+    gene_query: "(~fit_scaling_y.isna()) & (MURK_gene == False)"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    label_col: celltype
+    
+  - name: mouse_organoid_tfvelo
+    adata_path: ../data/unitvelo_mouse_organoid/adata_tfvelo.h5ad
+    dir_path: ../data/unitvelo_mouse_organoid/tfvelo_4throot
+    gene_query: "~fit_scaling_y.isna()"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    label_col: cell_type
+    
+  - name: human_erythroid_tfvelo_without_murk
+    adata_path: ../data/human_erythroid/adata_tfvelo.h5ad
+    dir_path: ../data/human_erythroid/tfvelo_4throot_without_murk
+    gene_query:  "(~fit_scaling_y.isna()) & (MURK_gene == False)"
+    xkey: M_total
+    vkey: velocity
+    output_filename: adata_tfvelo_stream.h5ad
+    label_col: celltype
+    
+  # - name: human_hematopoiesis_tfvelo
+  #   adata_path: ../data/dynamo/adata_tfvelo.h5ad
+  #   dir_path: ../data/dynamo/tfvelo_4throot
+  #   gene_query: "~fit_scaling_y.isna()"
+  #   xkey: M_total
+  #   vkey: velocity
+  #   output_filename: adata_tfvelo_stream.h5ad
+
