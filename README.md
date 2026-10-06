@@ -1,3 +1,35 @@
+# noSpliceVelo
+
+> **Use [`nsv_manuscript_reproduce/`](nsv_manuscript_reproduce/).** It holds the
+> latest noSpliceVelo code, the scripts that reproduce every analysis in the
+> manuscript, and the instructions for running them. Start with
+> [`nsv_manuscript_reproduce/README.md`](nsv_manuscript_reproduce/README.md).
+>
+> Everything else at this level of the repository is the earlier version of the
+> code. It is kept for reference only and is not used by the current pipeline.
+
+## Citation
+
+T. Mahajan and S. Maslov. noSpliceVelo infers gene expression dynamics without
+separating unspliced and spliced transcripts. *bioRxiv* 2024.08.08.607261 (2024).
+https://doi.org/10.1101/2024.08.08.607261
+
+```bibtex
+@article{Mahajan2024.08.08.607261,
+  author    = {Mahajan, Tarun and Maslov, Sergei},
+  title     = {noSpliceVelo infers gene expression dynamics without separating unspliced and spliced transcripts},
+  journal   = {bioRxiv},
+  elocation-id = {2024.08.08.607261},
+  year      = {2024},
+  doi       = {10.1101/2024.08.08.607261},
+  publisher = {Cold Spring Harbor Laboratory},
+  URL       = {https://www.biorxiv.org/content/10.1101/2024.08.08.607261v1}
+}
+```
+
+
+# Deprecated
+
 # noSpliceVelo infers RNA velocity without separating unspliced and spliced transcripts
 This is the repository for the tool noSpliceVelo, which infers RNA velocity without separating unspliced and spliced transcripts as described in our manuscript [Mahajan, Tarun, and Sergei Maslov. "noSpliceVelo infers gene expression dynamics without separating unspliced and spliced transcripts." bioRxiv (2024): 2024-08.](https://doi.org/10.1101/2024.08.08.607261). noSpliceVelo models stochastic gene expression using an experimentally tested model of bursty gene expression. From the bursty model, we demonstrate that RNA velocity can be inferred by analyzing the relationship between the mean and variance of gene expression.
 
