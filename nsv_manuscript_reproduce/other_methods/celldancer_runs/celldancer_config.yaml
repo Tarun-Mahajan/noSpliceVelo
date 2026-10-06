@@ -1,0 +1,92 @@
+# ============================================================================
+# Example config for run_celldancer_batch.py
+#
+#   python run_celldancer_batch.py --config celldancer_config_example.yaml
+#
+# cellDancer must be importable (`import celldancer as cd`).
+# ============================================================================
+
+# Global path for the detailed log covering ALL datasets in this run.
+log_file: ./logs/celldancer_batch.log
+# log_file: ./logs/celldancer_batch_v2.log
+# log_file: ./logs/celldancer_batch.log
+
+# Optional global defaults applied to every dataset. Any key can be overridden
+# inside an individual dataset entry below.
+defaults:
+  label: clusters              # .obs cell-type column (-> cellDancer cell_type_para)
+  embed_key: X_umap            # adata.obsm embedding key (-> cellDancer embed_para)
+  compute_umap: false          # compute UMAP with scanpy if embed_key is missing
+  preprocess: true             # run scVelo preprocessing in the wrapper
+
+  # ---- scVelo preprocessing ------------------------------------------------
+  MIN_SHARED_COUNTS: 20
+  N_TOP_GENES: 2000
+  N_PCS: 30
+  N_NEIGHBORS: 30
+
+  # ---- cd.velocity (the slow step: one neural net trained per gene) ---------
+  max_epoches: 200
+  permutation_ratio: 0.125
+  n_jobs: 10              # null/'auto' -> use all allocated CPU cores (fastest)
+  check_val_every_n_epoch: 10
+  patience: 3              # early-stopping patience; lower = stop training sooner
+  velocity_speed_up: false  # fit on downsampled cells (big speed win; keep on)
+
+  # ---- cd.compute_cell_velocity -------------------------------------------
+  projection_neighbor_choice: gene
+  expression_scale: power10
+  projection_neighbor_size: 30
+  speed_up: [100, 100]
+
+  # ---- cd.pseudo_time ------------------------------------------------------
+  dt: 0.05
+  n_repeats: 10
+  grid: [30, 30]
+  n_paths: 3
+  plot_long_trajs: true
+  compute_pseudotime: true     # false -> skip the slow/fragile pseudotime step
+                               # (velocity + kinetics still saved, no cd_time)
+  pseudotime_timeout_min: 45   # abort pseudotime after N min and continue (null=off)
+  recursion_limit: 50000       # raise if pseudo_time still hits RecursionError
+  thread_stack_mb: 256         # big C stack so deep recursion doesn't segfault
+
+  # ---- output --------------------------------------------------------------
+  save_plot: true
+
+# One entry per dataset to process (the seven benchmark datasets).
+datasets:
+  - name: mouse_pancreas
+    h5ad_path: ../../data/Pancreas/endocrinogenesis_day15.h5ad
+    output_dir: ../../data/Pancreas
+
+  - name: human_bonemarrow
+    h5ad_path: ../../data/BoneMarrow/human_cd34_bone_marrow.h5ad
+    output_dir: ../../data/BoneMarrow
+    embed_key: X_tsne
+    compute_pseudotime: false
+
+  - name: dynamo_mouse_neural
+    h5ad_path: ../../data/dynamo_mouse_neural/16_mouse_NeuronGenesis_GSE141851_with_time.h5ad
+    output_dir: ../../data/dynamo_mouse_neural
+    label: time
+
+  - name: mouse_erythroid
+    h5ad_path: ../../data/mouse_erythroid/erythroid_lineage.h5ad
+    output_dir: ../../data/mouse_erythroid
+    label: celltype
+
+  - name: mouse_organoid
+    h5ad_path: ../../data/unitvelo_mouse_organoid/14_mouse_IntestinalOrganoids_GSE128365.h5ad
+    output_dir: ../../data/unitvelo_mouse_organoid
+    label: cell_type
+
+  - name: human_erythroid
+    h5ad_path: ../../data/human_erythroid/13_human_erythroid_E-MTAB-7407.h5ad
+    output_dir: ../../data/human_erythroid
+    label: celltype
+
+  - name: mouse_dentategyrus
+    h5ad_path: ../../data/dentategyrus_new/1_mouse_DentateGyrusP0P5_GSE104323_addUmap.h5ad
+    output_dir: ../../data/dentategyrus_new
+    label: cell_type

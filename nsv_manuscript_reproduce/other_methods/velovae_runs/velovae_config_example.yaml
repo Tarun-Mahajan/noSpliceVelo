@@ -1,0 +1,62 @@
+# ============================================================================
+# Example config for run_velovae_batch.py
+#
+#   python run_velovae_batch.py --config velovae_config_example.yaml
+#
+# Run from the VeloVAE repo root (the folder containing the velovae/ package).
+# ============================================================================
+
+# Global path for the detailed log covering ALL datasets in this run.
+log_file: ./logs/velovae_batch_rerun.log
+
+# Optional global defaults applied to every dataset. Any key here can be
+# overridden inside an individual dataset entry below.
+defaults:
+  n_gene: 2000            # number of genes kept by preprocess_scvelo
+  min_shared_counts: 20   # minimum shared count filter threshold
+  n_pcs: 30               # PCs for PCA calculation
+  n_neighbors: 30         # neighbors for kNN graph
+  tmax: 20               # time range (scVelo convention)
+  dim_z: 5               # latent cell-state dimension (~ proportional to #cell types)
+  device: auto           # auto -> cuda:0 if a GPU is available, else cpu
+  full_vb: false         # true = VeloVAE Full VB variant
+  discrete: false        # true = discrete counts (Poisson/NB) variant
+  init_method: steady    # steady | tprior
+  cluster_key: clusters  # .obs key with cell types (used if present)
+  seed: 2022
+  model_key: velovae     # prefix on all saved outputs (layers, .var, files)
+  train_config: {}       # training hyperparameter overrides, e.g.:
+                         #   batch_size: 256
+                         #   early_stop: 5
+                         #   n_neighbors: 10
+
+# One entry per dataset to process.
+datasets:
+  - name: mouse_pancreas
+    h5ad_path: ../../data/Pancreas/endocrinogenesis_day15.h5ad
+    output_dir: ../../data/Pancreas
+
+  - name: human_bonemarrow
+    h5ad_path: ../../data/BoneMarrow/human_cd34_bone_marrow.h5ad
+    output_dir: ../../data/BoneMarrow
+
+  - name: dynamo_mouse_neural
+    h5ad_path: ../../data/dynamo_mouse_neural/16_mouse_NeuronGenesis_GSE141851_with_time.h5ad
+    output_dir: ../../data/dynamo_mouse_neural
+    
+  - name: mouse_erythroid
+    h5ad_path: ../../data/mouse_erythroid/erythroid_lineage.h5ad
+    output_dir: ../../data/mouse_erythroid
+    
+  - name: mouse_organoid
+    h5ad_path: ../../data/unitvelo_mouse_organoid/14_mouse_IntestinalOrganoids_GSE128365.h5ad
+    output_dir: ../../data/unitvelo_mouse_organoid
+    gene_col: gene
+    
+  - name: mouse_dentategyrus
+    h5ad_path: ../../data/dentategyrus_new/1_mouse_DentateGyrusP0P5_GSE104323_addUmap.h5ad
+    output_dir: ../../data/dentategyrus_new
+        
+  - name: human_erythroid
+    h5ad_path: ../../data/human_erythroid/13_human_erythroid_E-MTAB-7407.h5ad
+    output_dir: ../../data/human_erythroid

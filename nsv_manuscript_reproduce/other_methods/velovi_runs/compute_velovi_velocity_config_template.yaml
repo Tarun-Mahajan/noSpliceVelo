@@ -1,0 +1,53 @@
+# =============================================================================
+# veloVI Compute Velocity Pipeline Config
+#   python compute_velovi_velocity_run.py compute_velovi_velocity_config_template.yaml
+#
+# Datasets run in sequence. A detailed, timestamped log (all pipeline stdout,
+# tracebacks; progress bars filtered out) is written to `log_file`. A failure
+# in one dataset is logged and the run continues with the next.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `velovi_compute_velocity_YYYYmmdd_HHMMSS.log` is created in the working directory.
+log_file: ./logs/velovi_compute_velocity.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the pipeline's built-in defaults.
+defaults:
+  continue_from_prev: false       # if output_filename exists, skip recompute
+  n_samples: 25                   # posterior samples for latent_time / velocity
+  velo_statistic: mean            # statistic for velocity calculation ('mean')
+  model_filename: model_velovi.pt # trained veloVI model checkpoint in dir_path
+  output_filename: adata_velovi.h5ad # output filename for AnnData with velocity
+
+# One block per dataset. `dir_path` is REQUIRED; `name` is cosmetic.
+# `adata_path` is optional; if omitted, looks for input h5ad in `dir_path`.
+datasets:    
+  - name: mouse_pancreas
+    adata_path: ../../data/Pancreas/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/Pancreas
+    
+  - name: human_bonemarrow
+    adata_path: ../../data/BoneMarrow/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/BoneMarrow
+    
+  - name: mouse_dentategyrus
+    adata_path: ../../data/dentategyrus_new/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/dentategyrus_new
+    
+  - name: dynamo_mouse_neural
+    adata_path: ../../data/dynamo_mouse_neural/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/dynamo_mouse_neural
+    
+  - name: mouse_erythroid
+    adata_path: ../../data/mouse_erythroid/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/mouse_erythroid
+    
+  - name: mouse_organoid
+    adata_path: ../../data/unitvelo_mouse_organoid/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/unitvelo_mouse_organoid
+        
+  - name: human_erythroid
+    adata_path: ../../data/human_erythroid/model_velovi.pt/adata.h5ad
+    dir_path: ../../data/human_erythroid
+    

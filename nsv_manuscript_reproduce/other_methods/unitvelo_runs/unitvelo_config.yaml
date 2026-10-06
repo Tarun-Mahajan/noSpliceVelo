@@ -1,0 +1,89 @@
+# ============================================================================
+# Example config for run_unitvelo_batch.py
+#
+#   python run_unitvelo_batch.py --config unitvelo_config_example.yaml
+#
+# Run from the UniTVelo repo root (the folder containing the unitvelo/ package).
+# ============================================================================
+
+# Global path for the detailed log covering ALL datasets in this run.
+log_file: ./logs/unitvelo_batch.log
+
+# Optional global defaults applied to every dataset. Any key can be overridden
+# inside an individual dataset entry below.
+defaults:
+  label: clusters        # .obs column with cell-type labels (REQUIRED by UniTVelo)
+  preprocess: true       # do scVelo preprocessing in the wrapper, then call
+                         # run_model(normalize=False). Recommended: avoids the
+                         # newer-scvelo incompatibility in UniTVelo's own normalize.
+  normalize: false        # only used when preprocess=false (UniTVelo's own normalize)
+  config:                # UniTVelo Configuration overrides (UPPERCASE attrs)
+    FIT_OPTION: '1'      # '1' unified-time mode (default), '2' independent mode
+    GPU: 0               # GPU card index; -1 = CPU
+    R2_ADJUST: true      # R^2 on extreme quantile (adjusted)
+    IROOT: null          # root cell cluster for diffusion-map time init, or null
+    N_TOP_GENES: 2000    # decrease toward 1500 when #cells > 10k
+    # any other UPPERCASE attribute from unitvelo/config.py can be set here
+
+# One entry per dataset to process.
+datasets:
+  - name: mouse_pancreas
+    h5ad_path: ../../data/Pancreas/endocrinogenesis_day15.h5ad
+    output_dir: ../../data/Pancreas
+
+  - name: human_bonemarrow
+    h5ad_path: ../../data/BoneMarrow/human_cd34_bone_marrow.h5ad
+    output_dir: ../../data/BoneMarrow
+
+  - name: dynamo_mouse_neural
+    h5ad_path: ../../data/dynamo_mouse_neural/16_mouse_NeuronGenesis_GSE141851_with_time.h5ad
+    output_dir: ../../data/dynamo_mouse_neural
+    label: time
+    
+  - name: mouse_erythroid
+    h5ad_path: ../../data/mouse_erythroid/erythroid_lineage.h5ad
+    output_dir: ../../data/mouse_erythroid
+    label: celltype
+    
+  - name: mouse_organoid
+    h5ad_path: ../../data/unitvelo_mouse_organoid/14_mouse_IntestinalOrganoids_GSE128365.h5ad
+    output_dir: ../../data/unitvelo_mouse_organoid
+    gene_col: gene
+    label: cell_type
+    
+  - name: human_erythroid
+    h5ad_path: ../../data/human_erythroid/13_human_erythroid_E-MTAB-7407.h5ad
+    output_dir: ../../data/human_erythroid
+    label: celltype
+    
+  - name: mouse_dentategyrus
+    h5ad_path: ../../data/dentategyrus_new/1_mouse_DentateGyrusP0P5_GSE104323_addUmap.h5ad
+    output_dir: ../../data/dentategyrus_new
+    label: cell_type
+    config:
+      FIT_OPTION: '2'    # independent mode for complex datasets
+      # GPU: -1            # force CPU for this one
+
+
+
+#   # var_names already gene symbols; celltype column is 'clusters'.
+#   - name: my_dataset_a
+#     h5ad_path: /path/to/dataset_a.h5ad
+#     output_dir: /path/to/output/dataset_a
+
+#   # var_names are Ensembl IDs; gene symbols in adata.var['gene_symbol'];
+#   # celltypes stored under a different column.
+#   - name: my_dataset_b
+#     h5ad_path: /path/to/dataset_b.h5ad
+#     output_dir: /path/to/output/dataset_b
+#     gene_col: gene_symbol
+#     label: celltype
+
+#   # Per-dataset overrides of the UniTVelo configuration.
+#   - name: my_dataset_c
+#     h5ad_path: /path/to/dataset_c.h5ad
+#     output_dir: /path/to/output/dataset_c
+#     label: clusters
+#     config:
+#       FIT_OPTION: '2'    # independent mode for complex datasets
+#       GPU: -1            # force CPU for this one

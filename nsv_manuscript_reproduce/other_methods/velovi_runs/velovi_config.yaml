@@ -1,0 +1,54 @@
+# =============================================================================
+# veloVI pipeline config
+#   python velovi_run_pipeline.py velovi_config_template.yaml
+#
+# Datasets run in sequence. A detailed, timestamped log (all pipeline stdout,
+# tracebacks; training progress bars filtered out) is written to `log_file`.
+# A failure in one dataset is logged and the run continues with the next.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `velovi_pipeline_YYYYmmdd_HHMMSS.log` is created in the working directory.
+log_file: ./logs/velovi_pipeline_v2.log
+
+# Optional defaults applied to EVERY dataset; per-dataset values override these.
+# Values shown are the pipeline's built-in defaults.
+defaults:
+  continue_from_prev: false   # resume from saved 'model_velovi.pt' if present (KL warmup -> 0)
+  n_top_genes: 2000           # highly-variable genes to keep
+  min_shared_counts: 20       # scvelo filter_and_normalize threshold
+  n_hidden: 256               # VELOVI hidden width
+  n_latent: 10                # VELOVI latent dim
+  n_epochs_kl_warmup: 500     # KL warmup epochs (forced to 0 when resuming)
+  batch_size: 256            # null -> veloVI default; set an int to override
+
+# One block per dataset. `adata_path` and `dir_path` are REQUIRED; `name` is
+# cosmetic. Any key from `defaults:` may be repeated here to override it.
+datasets:
+  - name: mouse_pancreas
+    adata_path: ../../data/Pancreas/endocrinogenesis_day15.h5ad
+    dir_path: ../../data/Pancreas
+    
+  - name: human_bonemarrow
+    adata_path: ../../data/BoneMarrow/human_cd34_bone_marrow.h5ad
+    dir_path: ../../data/BoneMarrow
+    
+  - name: mouse_dentategyrus
+    adata_path: ../../data/dentategyrus_new/1_mouse_DentateGyrusP0P5_GSE104323_addUmap.h5ad
+    dir_path: ../../data/dentategyrus_new
+    
+  - name: dynamo_mouse_neural
+    adata_path: ../../data/dynamo_mouse_neural/16_mouse_NeuronGenesis_GSE141851_with_time.h5ad
+    dir_path: ../../data/dynamo_mouse_neural
+    
+  - name: mouse_erythroid
+    adata_path: ../../data/mouse_erythroid/erythroid_lineage.h5ad
+    dir_path: ../../data/mouse_erythroid
+    
+  - name: mouse_organoid
+    adata_path: ../../data/unitvelo_mouse_organoid/14_mouse_IntestinalOrganoids_GSE128365.h5ad
+    dir_path: ../../data/unitvelo_mouse_organoid
+        
+  - name: human_erythroid
+    adata_path: ../../data/human_erythroid/13_human_erythroid_E-MTAB-7407.h5ad
+    dir_path: ../../data/human_erythroid
