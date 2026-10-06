@@ -1,0 +1,216 @@
+# =============================================================================
+# Cross-Boundary Direction (CBDir) — Per-Method Config
+#   Used by compute_cbdir_run.py via a global config.
+#
+# Each entry under `datasets:` describes one dataset for THIS velocity method.
+# Anything set in `defaults:` applies to every dataset below; a dataset entry
+# overrides it. `cluster_edges` / `cluster_map` set here override the
+# dataset-level values declared in the global config.
+#
+# `vkey` and `xkey` are per-method. Every dependent name is composed from them:
+#   velocity layer      {vkey}                 e.g. velocity
+#   velocity graph      {vkey}_graph           e.g. velocity_graph
+#   negative graph      {vkey}_graph_neg       e.g. velocity_graph_neg
+#   velocity params     {vkey}_params          e.g. velocity_params
+#   velocity embedding  {vkey}_{basis}         e.g. velocity_pca
+#   embedding           X_{basis}              e.g. X_pca
+# `xkey` names the expression layer: it is temporarily swapped into
+# layers['Ms'] for the scVelo calls, and any pre-existing 'Ms' is restored
+# afterwards (removed if there was none). xkey: Ms is a no-op; xkey: X swaps .X.
+# =============================================================================
+
+defaults:
+  # --- cluster / velocity / expression keys -----------------------------------
+  k_cluster: clusters          # obs column holding the cell type / state
+  vkey: velocity               # velocity layer; drives {vkey}_graph, {vkey}_{basis}, ...
+  xkey: Ms                     # expression layer swapped into layers['Ms'] for scVelo
+  basis: pca                   # embedding basis: x_emb = X_{basis}, v_emb = {vkey}_{basis}
+  emb_key: null                # obsm key for the embedding (null -> X_{basis})
+                               # `pca_key:` is accepted as an alias for emb_key
+
+  # --- embedding --------------------------------------------------------------
+  # DEFAULT is "existing": the stored obsm[emb_key] is used and nothing is
+  # recomputed, because the neighbour graph and the velocity graph in the h5ad
+  # were built on that embedding. The other modes recompute the PCA while
+  # reusing the stored graphs, which the pipeline warns about loudly, and they
+  # require basis: pca.
+  #
+  #   existing   .X untouched, no PCA; use obsm[emb_key]                (default)
+  #   layer      .X = layers[x_layer]      -> normalize_total -> log1p -> PCA
+  #   layer_sum  .X = sum(layers[x_layers])-> normalize_total -> log1p -> PCA
+  #   X          .X as-is (NO normalize, NO log)                        -> PCA
+  x_source: existing
+  x_layer: null                # layer name when x_source: layer
+  x_layers: null               # e.g. [spliced, unspliced] when x_source: layer_sum
+  n_comps: 30                  # PCs for a freshly computed PCA
+  target_sum: null             # sc.pp.normalize_total target (null = median library size)
+
+  # --- metric -----------------------------------------------------------------
+  n_pcs_metric: null           # leading dimensions entering the cosine (null = all)
+  include_skipped: false       # emit NaN rows for source cells with <=2 target neighbours
+  # Minimum neighbours a source cell must have in the TARGET cluster to be
+  # scored. The 2026 benchmark's reference cbdir.py scores every cell with at
+  # least one (`len(nodes) == 0` skips); 3 reproduces the `<= 2` skip this
+  # pipeline inherited from the snippet it was built from. Set 1 to match the
+  # published metric exactly. The excluded cells are the thinnest boundary
+  # cells — one displacement vector rather than a mean over several — so the
+  # stricter rule trims the noisy tails of each transition's distribution.
+  # It never changes the score of a cell that is retained.
+  min_target_neighbors: 3
+  # In-cluster velocity consistency (ICCoh) of each source cell, written to the
+  # long table as the `iccoh` column and summarised per edge as `mean_iccoh`.
+  #
+  # ICCoh is NOT a second correctness metric. It is blind to orientation — a
+  # fully reversed velocity field scores as highly as a correct one — and that
+  # is exactly why it is worth carrying: it measures the local smoothness of the
+  # field, which is the one thing that can inflate CBDir for free, since the
+  # arrow CBDir scores is a transition-weighted average over the same
+  # neighbourhood. Reported beside CBDir it answers "is this method's boundary
+  # correctness bought by coherence or earned on top of it".
+  compute_iccoh: true
+  iccoh_min_neighbors: 1       # reference behaviour (>= 1 same-cluster neighbour);
+                               # 3 aligns it with CBDir's own skip rule instead
+  # Where the consistency is measured:
+  #   gene_confidence (DEFAULT) - the true high-dimensional gene space, computed
+  #               exactly as compute_velocity_confidence_run.py computes velocity
+  #               confidence (same code: velocity_confidence_scaled._prepare) —
+  #               shared gene intersection across methods, the chosen version's
+  #               transform / per-gene scaling, Pearson correlation across genes,
+  #               kNN `distances` graph — with each cell's neighbours restricted to
+  #               its own cluster. On a single all-cell cluster it equals the
+  #               confidence column of the same version.
+  #   embedding - velocity_pca on CBDir's own basis and graph. velocity_pca is
+  #               rebuilt from the velocity graph's transition probabilities, i.e.
+  #               a smoothing operator, so coherence measured here is largely a
+  #               property of the projection rather than of the method.
+  #   gene      - the 2026 benchmark's `inner_cluster_coh`: raw cosine on each
+  #               method's own non-NaN genes over `connectivities`. Verified cell
+  #               for cell against Evaluation/In-Cluster Coherence/iccoh.py with
+  #               iccoh_min_neighbors: 1. Use it to reproduce published numbers.
+  iccoh_space: gene_confidence
+  iccoh_clusters: source       # source -> only clusters that start a declared edge
+                               # all    -> every cluster, as the benchmark reports it
+
+  # gene_confidence settings (ignored for the other spaces).
+  # Version = one of the velocity_confidence_scaled.confidence_report columns:
+  #   scvelo_stock | mad | zscore | signed_sqrt_mad | signed_4throot_scvelo | spearman
+  # signed_4throot_scvelo is the version reported as velocity consistency.
+  iccoh_confidence_version: signed_4throot_scvelo
+  iccoh_gene_subsample: null
+  iccoh_neighbor_graph: distances   # distances (as confidence) | connectivities (as CBDir)
+  iccoh_use_genes: all              # used when no shared gene set applies:
+                                    # all | a var column | a list of gene names
+  iccoh_intersection_mode: false     # score every method on the dataset's shared
+                                    # finite-velocity genes, as the confidence run does
+  gene_names_col: null              # var column with gene symbols, for matching genes
+                                    # across methods whose var_names differ
+
+  # Extra ICCoh columns, diagnostics beside `iccoh`:
+  #
+  #   iccoh_embedding embedding space (velocity_pca). Written when iccoh_space is
+  #                   not embedding (and mirrors `iccoh` when it is), so the
+  #                   smoothing sweep's gene-vs-embedding panel keeps working.
+  #   iccoh_gene_raw  untransformed raw-cosine gene space -> the benchmark number.
+  #                   Written only when iccoh_space is not already 'gene'.
+  #   iccoh_gene_vst  raw-cosine gene space after sign(v)*|v|^iccoh_gene_power.
+  #
+  # The VST exponent is the variance-stabilising one, not a tuned knob: for
+  # var ~ mean^q the transform is x^(1 - q/2), so q = 1 gives sqrt (scVelo's
+  # `sqrt_transform`) and q = 1.5 gives the fourth root, 0.25. Caveat: being
+  # per-coordinate and nonlinear it rotates the velocity vector rather than
+  # merely rescaling it — the column is the coherence of the transformed field.
+  # The long table also records iccoh_space, iccoh_version, iccoh_neighbor_graph
+  # and iccoh_n_genes, so a table always says which ICCoh it carries.
+  iccoh_embedding: true
+  iccoh_gene_raw: true
+  iccoh_gene_vst: true
+  iccoh_gene_power: 0.25
+
+  # --- velocity-field smoothing (robustness sweep; off by default) -------------
+  # One round is  V <- (1 - lambda) V + lambda * mean(V over neighbours).
+  # This exists to MANIPULATE the spatial smoothness of the field while holding
+  # the manifold, the labels and the underlying velocity estimates fixed, so the
+  # coherence/CBDir relationship can be tested causally rather than observed.
+  # Leave at 0 for any headline run; smooth_sweep_cbdir.py sets these itself.
+  smooth_velocity_rounds: 0    # s; 0 disables smoothing entirely
+  smooth_velocity_lambda: 0.5  # weight given to the neighbour mean per round
+  # gene      -> smooth layers[vkey]; the velocity graph and the embedded
+  #              velocity are then FORCED to be rebuilt from the smoothed field
+  #              (recompute_velocity_graph and reuse_velocity_embedding are
+  #              overridden), which is the faithful analogue of a method that
+  #              simply produces a smoother field. Without that rebuild the
+  #              smoothing would never reach CBDir and the sweep would be a
+  #              silent no-op.
+  # embedding -> smooth obsm[{vkey}_{basis}] directly: cheap, but it bypasses the
+  #              velocity graph and so answers a narrower question.
+  smooth_velocity_space: gene
+  # recompute -> average over a FRESH kNN (default). metric -> average over the
+  # stored graph, i.e. the very graph CBDir scores against; that drags each
+  # velocity toward the local displacement field and inflates CBDir for a purely
+  # mechanical reason. Use metric only to demonstrate that artefact.
+  smooth_graph: recompute
+  smooth_k: 60                 # k for the fresh kNN; ignored when smooth_graph: metric
+
+  # --- graphs -----------------------------------------------------------------
+  recompute_neighbors: false   # keep the stored kNN graph (recommended)
+  n_neighbors: 30              # only used when recompute_neighbors: true
+
+  # Rebuild {vkey}_graph here instead of using the one in the h5ad. When true the
+  # pipeline calls scv.tl.velocity_graph(xkey=xkey, vkey=vkey, approx=,
+  # sqrt_transform=, n_jobs=) inside the Ms swap, before velocity_embedding.
+  recompute_velocity_graph: false
+  approx: false                # only used when recompute_velocity_graph: true
+  sqrt_transform: true         # only used when recompute_velocity_graph: true
+  n_jobs: null                 # only used when recompute_velocity_graph: true
+
+  use_negative_cosines: auto   # auto | true | false — auto uses {vkey}_graph_neg
+                               # when present, and warns + falls back when absent
+  reuse_velocity_embedding: auto   # auto | true | false
+                                   # auto = reuse obsm[{vkey}_{basis}] when x_source is
+                                   #        "existing" and the graph is not rebuilt
+
+  # --- optional per-method overrides of the dataset-level settings -------------
+  # cluster_edges: null
+  # cluster_map: null
+  # cluster_map_drop_unmapped: false
+  gene_query: "reliable_velo_gene == True" 
+  use_confidence_report: true # If true, runs confidence_report evaluating stock, mad, zscore, signed_sqrt_mad, spearman
+  use_genes: "all"           # Gene set to evaluate: "all" or specific var column / gene list
+  apply_gene_query_always: true
+  root_power: 4.0
+  str_suffix: "_4throot"
+
+datasets:
+  - name: mouse_pancreas
+    adata_path: ../data/Pancreas/velovi_4throot/adata_velovi_stream.h5ad
+    dir_path: ../data/Pancreas/velovi_4throot/
+    # uses every default above
+
+  - name: human_bonemarrow
+    adata_path: ../data/BoneMarrow/velovi_4throot/adata_velovi_stream.h5ad
+    dir_path: ../data/BoneMarrow/velovi_4throot/
+    
+  - name: mouse_dentategyrus
+    adata_path: ../data/dentategyrus_new/velovi_4throot/adata_velovi_stream.h5ad
+    dir_path: ../data/dentategyrus_new/velovi_4throot/
+    k_cluster: cell_type
+    
+  - name: mouse_neural
+    adata_path: ../data/dynamo_mouse_neural/velovi_4throot/adata_velovi_stream.h5ad
+    dir_path: ../data/dynamo_mouse_neural/velovi_4throot/
+    k_cluster: time
+    
+  - name: mouse_erythroid
+    adata_path: ../data/mouse_erythroid/velovi_4throot_without_murk/adata_velovi_stream.h5ad
+    dir_path: ../data/mouse_erythroid/velovi_4throot_without_murk/
+    k_cluster: celltype
+    
+  - name: mouse_organoid
+    adata_path: ../data/unitvelo_mouse_organoid/velovi_4throot/adata_velovi_stream.h5ad
+    dir_path: ../data/unitvelo_mouse_organoid/velovi_4throot/
+    k_cluster: cell_type
+    
+  - name: human_erythroid
+    adata_path: ../data/human_erythroid/velovi_4throot_without_murk/adata_velovi_stream.h5ad
+    dir_path: ../data/human_erythroid/velovi_4throot_without_murk/
+    k_cluster: celltype

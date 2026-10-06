@@ -1,0 +1,819 @@
+####################
+# =============================================================================
+# Plotting + linear-model configuration for CBDir
+#   python plot_cbdir.py --global-config cbdir_global_config_template.yaml \
+#                        --plot-config plot_cbdir_config_template.yaml
+#
+# Outputs (all prefixed with save_path, suffixed with str_suffix):
+#   {save_path}_pooled{suffix}.png/.pdf                  x = method, one point per
+#                                                        transition, pooled test
+#   {save_path}_pooled{suffix}.csv                       pooled offsets + P(win)
+#   {save_path}_per_edge{suffix}.csv                     per (method, edge) difference
+#   {save_path}_aggregated{suffix}.png/.pdf              x = dataset, specified order
+#   {save_path}_aggregated_ranked{suffix}.png/.pdf       x = dataset, median-ranked
+#   {save_path}_{dataset}_by_edge{suffix}.png/.pdf       x = edge,    specified order
+#   {save_path}_{dataset}_by_edge_ranked{suffix}.png/.pdf  x = edge,  median-ranked
+#   {save_path}_lmm{suffix}.csv                    per-method offsets vs reference
+#   {save_path}_lmm_forest{suffix}.png/.pdf        offsets with 95% CIs
+#   {save_path}_lmm_diagnostics{suffix}.png/.pdf   residual QQ / resid-vs-fitted
+# =============================================================================
+
+save_path: ./results_cbdir_nsv_comparison/cbdir_plot
+
+# Run log. Everything printed (including statsmodels convergence warnings) is
+# tee'd to this file as well as the terminal; progress-bar lines are filtered out.
+# Omit, or set to null, for terminal output only. Set to "auto" for a timestamped
+# plot_cbdir_YYYYmmdd_HHMMSS.log in the working directory. Parent directories are
+# created. --log-file on the command line overrides this.
+# Note this is separate from the log_file in the CBDir *global* config, which
+# belongs to compute_cbdir_run.py — keep them distinct so a plotting run does not
+# append to the compute run's log.
+log_file: ./logs/plot_cbdir_cell.log
+
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
+# What one box contains on the aggregated plot:
+#   cells  -> every scored cell in the dataset, pooled across edges (default).
+#             Honest per-cell distribution, but weights edges by cell count.
+#   edges  -> per-edge mean CBDir; every transition counts equally, few points.
+aggregate_by: cells
+
+# Method-order variants. Every listed variant produces its own figure, so you get
+# both views rather than having to choose:
+#   specified -> the order from method_groups / method_order below, shared by all
+#                groups. The comparison view: a method keeps its slot, so reading
+#                one method across datasets is easy.
+#   ranked    -> methods ordered by DECREASING median CBDir within each group, so
+#                the best sits leftmost. The ranking view: "who won here" is
+#                obvious, but a method moves slot between groups, so following it
+#                across datasets means following its colour.
+# Ranked figures get a "_ranked" filename suffix.
+aggregated_order_variants: [specified, ranked]
+# The pooled figure's replication unit. The pooled TESTS already take the dataset
+# as the headline unit (pool_unit below), but the figure has always drawn one
+# point per transition, so a dataset cut into six transitions looks six times as
+# certain as one cut into two. `dataset` collapses each dataset first, putting
+# the picture on the same unit as the test annotated above it; both are written,
+# the dataset one with a `_by_dataset` suffix and one marker shape per dataset.
+pooled_point_variants: [transition, dataset]
+pooled_dataset_aggregator: median    # median | mean, over a dataset's transitions
+pooled_dataset_markers: true
+pooled_dataset_legend_ncol: null
+
+# Same for the per-dataset (x = edge) figures; 'ranked' orders methods within
+# each individual transition. Set to [specified] alone if the extra files are
+# noise — with many datasets this doubles the per-dataset figure count.
+per_dataset_order_variants: [specified, ranked]
+
+# --- per-method panels -----------------------------------------------------
+# One figure per method: every transition, the method against the reference, with
+# two boxes per transition. Written to a subdirectory so they do not swamp the
+# main output folder.
+#
+#   vertical   (default) x = transitions grouped by dataset, y = CBDir. With ~30
+#              transitions this is the one that fits: transition names go under
+#              the axis at an angle and the p-values stand upright above each pair.
+#   horizontal y = transitions, x = CBDir — better when the transition names are
+#              very long and there are few of them.
+# Either way each dataset's block is marked with a curly brace carrying the
+# dataset name; the brace offset is measured off the rendered tick labels and the
+# name's rotation and size are chosen so that no two names collide.
+per_method_orientation: vertical
+per_method_group_braces: true
+per_method_dataset_fontsize: 10.0
+per_method_edge_rotation: null   # null -> 45 when vertical, 0 when horizontal
+#
+# Row ordering: datasets by decreasing median CBDir, and within a dataset the
+# transitions likewise. The median is taken over the cells of BOTH plotted
+# methods, so the axis is a property of the transition and does not reshuffle
+# from one method's page to the next — the panels stay comparable side by side.
+#   median    -> as above (default)
+#   specified -> dataset_order, then cluster_edges order
+per_method_plots: true
+per_method_subdir: per_method_plots
+per_method_order: median
+per_method_figsize: null       # null -> [11, 0.42 * n_rows + 2.4]
+per_method_showfliers: false   # falls back to show_points when unset
+
+# Each row carries a paired Wilcoxon over the cells that BOTH the method and the
+# reference scored on that transition. The correction family is "the transitions
+# of this dataset", i.e. p is adjusted within each dataset across its own edges.
+# Defaults to the global `p_adjust`; set this to override just here (e.g. `holm`
+# for a strict Bonferroni-style correction by the number of edges).
+per_method_p_adjust: null
+# What to print beside each row: p (nominal), p_adj (corrected), or both.
+# Colour: bold orange = adjusted < 0.05, amber = nominal only, grey = neither.
+per_method_annotation: [p, p_adj]
+#
+# CAVEAT worth keeping in the caption: these are CELL-level tests, so a row says
+# "on this transition the two methods' score distributions separate", never that
+# the method is better overall. The transition- and dataset-level tests (pooled
+# frames, logistic forests) are what carry that claim. All rows are also written
+# to <per_method_subdir>/<stem>_per_edge_wilcoxon.csv.
+
+# Method ordering. Within each group methods are sorted by the mean across
+# datasets of the within-dataset median CBDir. group1 is plotted before group2.
+method_groups:
+    group1:
+      - veloVI
+      - veloVAE
+      - celldancer
+      - scVelo-dynamical
+      - scVelo-stochastic
+      - uniTVelo
+    group2:
+      - TFvelo
+      - nSV
+      # - nSV-global
+      # - nSV-cell
+
+# # Explicit ordering (ignored when method_groups is given).
+# method_order:
+#   - scvelo
+#   - velovi
+#   - tfvelo
+#   - celldancer
+
+# order_methods_within_dataset: true
+
+method_colors:
+  # --- cool family: six visually distinct hues ---
+  veloVI:            "#1B2F6B"   # navy
+  veloVAE:           "#4C8FD6"   # sky blue
+  celldancer:        "#56C7D6"   # cyan
+  scVelo-dynamical:  "#12806A"   # dark teal-green
+  scVelo-stochastic: "#8CC63F"   # yellow-green
+  uniTVelo:          "#6A51A3"   # purple
+  # --- warm family: the three related methods ---
+  TFvelo:            "#8C1515"   # dark red
+  # nSV-global:        "#E4572E"   # red-orange
+  # nSV-cell:          "#F5B041"   # amber
+  nSV:          "#F5B041"   # amber
+  # nSV-global-max:    "#F49C7A"   # light salmon — pairs with nSV-global
+  # nSV-cell-max:      "#9C6B10"   # dark ochre  — pairs with nSV-cell
+
+show_points: false             # outlier points on the boxplots
+figsize: [14, 6]               # aggregated figure
+per_dataset_figsize: [16, 6]   # per-dataset figures
+dpi: 300
+title: "Cross-Boundary Direction Correctness Across Datasets"
+per_dataset_title: "CBDir by transition"
+ylabel: "CBDir"
+xlabel: "Dataset"
+edge_xlabel: "Transition"
+# Let each figure's y-axis fit its own data, with 5% padding plus headroom for
+# annotations. True by default: a panel whose CBDir never leaves [-0.4, 0.6]
+# should not be squashed into a fixed [-1, 1] frame. Set false to pin every
+# figure to `ylim` below, which is what you want when figures from different
+# runs have to be compared side by side.
+ylim_from_data: true
+ylim: [-1.0, 1.0]              # used only when ylim_from_data is false
+# CBDir = 0 is the boundary between velocity pointing across the transition in
+# the expected direction and pointing the wrong way, so every panel with CBDir
+# (or a CBDir difference) on an axis marks it. The rule is drawn ABOVE the grid:
+# seaborn's whitegrid puts a tick line at 0.0 on most of these axes, and a rule
+# behind it is invisible. It stays below the boxes and points, so it shows in the
+# gaps instead of striking through the data.
+zero_line: true
+zero_line_color: "#333333"
+zero_line_style: "--"
+zero_line_width: 1.2
+zero_line_zorder: 1.6          # > grid (~0.5-1), < boxes and points (2+)
+# Not applied to the forest or the LMM diagnostics: 0 there means "no difference
+# from the reference" and "zero residual", which is a different statement from
+# "the velocity points the right way".
+xlabel_rotation: 45
+star_rotation: 90
+box_linewidth: 0.7
+
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+# Reference method for both the plot stars and the linear models.
+reference_method: nSV
+
+# Plot-star test, paired on obs_id = "{cell_barcode}___{edge}".
+stat_test: wilcoxon            # wilcoxon | mannwhitneyu
+
+run_lmm: true
+
+# UNIT OF REPLICATION — the setting that decides whether the p-values mean
+# anything. CBDir is scored per cell, but cells inside a transition are not
+# independent: neighbouring cells share neighbours, so their scores are
+# correlated. Treating each cell as a replicate is pseudoreplication and gives
+# wildly anticonservative p-values (in simulation, 82% false-positive rate at a
+# nominal 5% when the true offset averages zero across transitions).
+#   edge -> average the per-cell differences within each transition, then a
+#           one-sample t across transitions, df = n_edges - 1. Respects the
+#           clustering. This is the default and what the stars use.
+#   cell -> every cell a replicate. Reported alongside as p_cell for reference,
+#           but not recommended for inference.
+# A dataset with a single usable edge falls back to the cell test, records why
+# in the `notes` column, and should be read with that in mind.
+cluster_unit: edge
+
+# closed_form -> paired t-tests, no iterative optimizer, no convergence warnings.
+#                For the cell-level test this is algebraically identical to the
+#                random-intercept mixed model (the cell effect cancels exactly in
+#                a within-cell contrast; estimates match to ~1e-15, SEs to ~1e-9),
+#                so nothing is lost.
+#   mixedlm    -> additionally fit the statsmodels MixedLM and record its output
+#                in mixedlm_* columns. Slower and prone to boundary/convergence
+#                warnings; useful only as a cross-check.
+estimator: closed_form
+
+# Where the plot stars come from:
+#   model     -> the cluster_unit test above (default)
+#   wilcoxon  -> paired Wilcoxon on cells; pseudoreplicated, kept for comparison
+#   none      -> no stars
+# Per-edge panels always use the within-edge test, since an edge-clustered test
+# needs more than one edge; their stars stay anticonservative.
+# Significance stars are no longer drawn on the aggregated or per-dataset figures.
+# A per-dataset test on 3-9 transitions cannot resolve a real effect (with 5 edges
+# and 8 comparisons you need |t| > 5.3), so a wall of "ns" reads as "no difference"
+# when it means "not provable from this many transitions". Inference lives on the
+# pooled figure instead. This key only affects the legacy Wilcoxon path.
+star_source: none
+
+# The aggregated figure is emitted once per annotation variant:
+#   none -> bare boxes
+#   pwin -> P(method > reference) printed above each non-reference box
+# Combined with the order variants this gives up to four aggregated figures;
+# "_pwin" is appended to the annotated ones.
+aggregated_annotation_variants: [none, pwin]
+
+# --- pooled cross-dataset test (the headline inference) ---------------------
+# Per-edge differences from every dataset are pooled, and the offset vs the
+# reference is tested with two replicates, both reported:
+# All three frames are always computed and written to the CSV; pool_unit only
+# chooses which one is the headline and drives the figure annotations.
+#
+#   dataset       dataset as a RANDOM effect. Average the edge differences within
+#                 each dataset, then test across datasets (df = n_datasets - 1).
+#                 The error term is between-dataset heterogeneity, so the claim
+#                 generalises beyond the datasets you happen to have. Conservative.
+#                 NULL: "the offset averages zero over the population of datasets."
+#
+#   dataset_fixed dataset as a FIXED effect, edge-within-dataset as the error
+#                 (df = n_edges - n_datasets). Conditions on the datasets at hand.
+#                 Roughly two orders of magnitude more powerful in p, because
+#                 dataset-to-dataset heterogeneity is removed rather than
+#                 propagated into the SE — which is also what narrows the claim.
+#                 NULL: "the offset averages zero over THESE datasets."
+#                 Undefined when every dataset contributes a single edge (df = 0);
+#                 that is reported as NaN with an explanation in `notes`.
+#
+#   edge          all (dataset, edge) pairs pooled, dataset ignored (df = n_edges - 1).
+#                 Kept for reference only. Its error term is inflated by
+#                 between-dataset mean shifts, so it answers neither question
+#                 cleanly; in simulation it is the worst-calibrated of the three.
+#
+# Which to headline is a question about the claim, not the statistics: for a
+# benchmark over a fixed set of published datasets, dataset_fixed is often the
+# honest frame; for "this method is generally better", use dataset.
+# Whether a method's per-transition mean is computed on the cells it shares with
+# the reference, or on every cell it scored:
+#   paired   -> complete cases only. Cell composition is controlled exactly, but
+#               cells are discarded (22-51% on this benchmark) and the retained
+#               set is defined by whichever cells the REFERENCE scored.
+#   unpaired -> each method uses all of its own cells. Nothing is discarded, but
+#               velocity quality is now confounded with which cells each method's
+#               kNN graph made scorable in the first place.
+#   both     -> compute both and report them side by side (default). Agreement is
+#               the evidence that the choice does not affect the conclusion; the
+#               log prints the correlation between the two sets of per-transition
+#               offsets.
+# Under `unpaired`, win_rate becomes the Mann-Whitney AUC - the chance a random
+# cell from the method beats a random cell from the reference, which is the effect
+# size a logistic discriminating the two methods would report.
+# Unpaired outputs carry a "_unpaired" filename suffix and a `pairing` column.
+pairing: both
+
+# --- logistic separation from the reference --------------------------------
+# Two framings, both reported, SEs cluster-robust on the transition:
+#   paired   -> conditional logistic with the CELL as the stratum. Each cell
+#               contributes one reference and one method observation, so the
+#               likelihood collapses to expit(beta * difference) and everything
+#               constant within a cell — dataset, transition, cell identity —
+#               cancels. A dataset fixed effect is therefore not just unnecessary
+#               here, it is inestimable.
+#   unpaired -> logit P(method) ~ beta*z + C(dataset), on every cell either method
+#               scored, with DATASET AS A FIXED EFFECT. Uses the whole
+#               distribution rather than per-transition means, so two methods with
+#               equal means but different spread are still separable.
+# Effect size is the odds ratio per unit z: the odds that the higher of two scores
+# belongs to the method. Written to {save_path}_logistic{suffix}.csv.
+logistic_test: true
+
+# Forest plot of the odds ratios with 95% CIs, paired and unpaired side by side.
+# x is the odds that the higher of two CBDir scores belongs to the method, per
+# 0.1 of z; 1.0 means indistinguishable from the reference. Log x-axis so
+# "twice as likely" and "half as likely" are symmetric about 1.
+logistic_plot: true
+logistic_figsize: null         # null = sized from the method count
+
+# What to print beside each odds ratio. Both by default, so a method that is
+# nominally significant but does not survive multiplicity correction can still be
+# discussed as a trend rather than disappearing into "ns".
+#   p      -> nominal (uncorrected) p-value
+#   p_adj  -> multiplicity-adjusted p-value
+# Colour encodes the same three tiers: bold orange = adjusted < 0.05,
+# amber = nominal < 0.05 only, grey = neither.
+logistic_annotation: [p, p_adj]
+
+# Which panels the logistic figure shows, as "kind|clustering":
+#   kind        paired | unpaired
+#   clustering  edge    -> cells correlated within a transition (~30 clusters)
+#               dataset -> transitions ALSO correlated within a dataset (~7).
+#                          Clustering at the coarser level absorbs all finer
+#                          dependence nested inside it, so this is the two-level
+#                          "cells in transitions in datasets" answer, and the one
+#                          that matches what the pooled dataset-random frame
+#                          assumes. Few clusters, so it is approximate: a t(G-1)
+#                          reference and the G/(G-1) scaling are applied, but with
+#                          7 clusters a wild cluster bootstrap would be better
+#                          still.
+# The point estimate is identical across clusterings; only the interval and the
+# p-value move. All four combinations are always written to the CSV.
+#
+# By default TWO figures are written, so the paired result has an unpaired
+# companion to sit beside it on the same slide:
+#   ..._logistic.png           paired   (edge- and dataset-clustered)
+#   ..._logistic_unpaired.png  unpaired (edge- and dataset-clustered)
+# Paired conditions on the cell: it asks, among cells BOTH methods scored, which
+# of the two scores is higher. Unpaired uses every cell each method scored (the
+# scorable set is itself method-dependent, so the two can disagree) and holds the
+# dataset fixed so only within-dataset contrasts contribute.
+# Each entry is either a shorthand ("paired" / "unpaired") or a mapping with
+# `name` (the filename suffix) and `panels`.
+logistic_panel_variants: [paired, unpaired]
+
+# Legacy override: setting `logistic_panels` collapses the above to a SINGLE
+# unnamed figure with exactly these panels. Leave it commented out to get both.
+# logistic_panels: ["paired|edge", "paired|dataset"]
+
+# --- a pre-specified head-to-head --------------------------------------------
+# Two method names. This is the one contrast that neither needs a multiplicity
+# correction nor inherits the winner's-curse problem of the eight-method panel:
+# the pair is fixed before the data are seen, on a structural criterion, so it is
+# a single a-priori hypothesis rather than the largest of eight observed gaps.
+# State that criterion in the caption — e.g. the two methods that do not use
+# spliced/unspliced kinetics — or the protection is lost.
+#
+# Four tests are reported because they fail differently: the signed-rank assumes
+# a location shift, the sign test discards magnitude, the dataset sign-flip is
+# exact but floored at 1 / 2**n_datasets, and the reversal count assumes nothing
+# about shape and sees only direction. Quote the floor whenever the sign-flip p
+# is reported. The figure is drawn in both the CBDir and the alignment folder.
+head_to_head: [nSV, TFvelo]
+head_to_head_plot: true
+head_to_head_bootstrap: 5000   # dataset cluster CI for the cell-level win rate
+head_to_head_seed: 0
+head_to_head_figsize: null
+head_to_head_title: null
+head_to_head_legend_ncol: null
+
+# --- a second pass on the alignment ------------------------------------------
+# After the CBDir figures are written, the whole suite is replayed with the
+# alignment (CBDir / Rbar) in place of CBDir, into `align_subdir`. It reuses the
+# same functions, so the two folders cannot drift apart.
+#
+# What the second folder is and is not: the alignment divides CBDir by a strictly
+# positive per-cell quantity, and the SAME Rbar divides both sides of every
+# paired difference. So every sign-based result is identical between the two —
+# transitions above zero, the reversal table, sign tests — and only magnitude-
+# and rank-based statistics move. The alignment folder is a rescaling that buys
+# cross-transition comparability, not a second set of claims.
+#
+# The ceiling and the coherence control are suppressed in that pass: the ceiling
+# of an alignment is 1 by construction, and the ICCoh control belongs with the
+# raw metric it was built to interrogate.
+align_plots: true
+align_subdir: cbdir_align_plots
+align_value_label: Alignment
+
+# --- geometric ceiling: how much direction was there to get? ----------------
+# Reads `resultant_length`, `alignment` and `ceiling_coherent`, written by
+# compute_cbdir_run.py. For a boundary cell,
+#
+#     CBDir_i = <v_hat_i, m_i> = Rbar_i * cos(theta_i),   Rbar_i = ||m_i||,
+#
+# where m_i is the MEAN UNIT displacement to that cell's target-cluster
+# neighbours. So |CBDir_i| <= Rbar_i, with equality when the velocity points
+# along the resultant. Rbar is fixed by the kNN graph and the embedding — no
+# velocity method can move it — and only cos(theta_i) is the method's doing.
+#
+# Consequences worth keeping in mind when reading the figure:
+#   * A transition with a tight cone (Rbar ~ 0.9) and one with a fanned cone
+#     (Rbar ~ 0.4) are not on the same scale in raw CBDir. The reported
+#     alignment, sum Rbar cos(theta) / sum Rbar, puts them on one.
+#   * The weighting is deliberate: a cell whose cone is nearly isotropic knows
+#     nothing about direction, and its per-cell ratio is unstable.
+#   * The Fisher-z ceiling is mean(atanh(Rbar)), not atanh(mean(Rbar)); atanh is
+#     convex, so the latter understates it and the data can seem to breach it.
+#   * Rbar is inflated at small n — an isotropic cone of n neighbours still
+#     reports about 1/sqrt(n), so 0.58 at n = 3. Exact as a ceiling for the
+#     realised neighbour set; `*_corrected` columns, (n Rbar^2 - 1)/(n - 1), are
+#     for comparing cone tightness across transitions with different n.
+#   * `ceiling_coherent` = ||mean_i m_i||, the best a single SHARED direction can
+#     do, which is <= the free-field ceiling. The gap is what a perfectly
+#     coherent field gives up — the formal counterpart of the ICCoh panel below.
+ceiling_test: true
+ceiling_plot: true
+# How the per-method number is formed. Within a transition the alignment is
+# Rbar-weighted, which is what the derivation calls for. ACROSS transitions it is
+# not: transitions range from ~10 cells to a few thousand, so pooling cells lets
+# one large transition outvote twenty small ones. The reported alignment is
+# therefore per transition, then `ceiling_aggregator` over a dataset's
+# transitions, then averaged over datasets — the same nesting as everywhere else
+# in this pipeline. `alignment_cell_weighted` keeps the pooled figure visible as
+# a diagnostic; it is not the unit any claim here rests on.
+ceiling_aggregator: median     # median | mean, over a dataset's transitions
+ceiling_bootstrap: 5000        # dataset cluster bootstrap for the alignment CIs
+ceiling_seed: 0
+ceiling_dataset_markers: true  # shape = dataset, as elsewhere
+ceiling_figsize: null
+ceiling_title: null
+ceiling_legend_ncol: null
+ceiling_dataset_legend_ncol: null
+# The cone geometry belongs to the graph and the embedding, not to a method, so
+# the ceiling should barely move between methods. If it moves by more than this,
+# the methods' h5ads carry different PCAs or neighbour graphs and the run says so.
+ceiling_spread_warn: 0.02
+# Output: ..._ceiling.csv (per-method alignment, ceilings, CIs) and
+# ..._ceiling_points.csv (per dataset, transition and method).
+
+# --- coherence control: is the correctness bought by smoothness? ------------
+# Reads the `iccoh` column written by compute_cbdir_run.py (compute_iccoh: true).
+# In-cluster coherence is the metric introduced alongside CBDir in veloAE and
+# reported beside it ever since; it is blind to orientation, so it is NEVER a
+# correctness score. It is here as the covariate, because the arrow CBDir scores
+# is a transition-weighted average over the same neighbourhood that ICCoh
+# measures the smoothness of — so a locally smooth field can collect boundary
+# correctness for free.
+#
+# The model is CBDir_z ~ ICCoh + dataset, fitted across all methods at once: one
+# coherence-to-correctness exchange rate per panel, with every dataset keeping
+# its own level, so a dataset that is both easy and coherent cannot masquerade
+# as evidence for the trend. The reported residual is "CBDir above what this
+# dataset's coherence would predict", with a dataset cluster bootstrap CI.
+# A method on the line is not thereby bad — it simply cannot claim its
+# correctness is independent of the smoothness of its field.
+iccoh_test: true
+iccoh_plot: true
+# One point per (dataset, method) by default: the dataset's transitions and its
+# source clusters are each collapsed, so a dataset cut into more transitions does
+# not speak louder, and the trend is estimated on the contrast that matters —
+# within a dataset, does the method with the more coherent field score higher?
+# `transition` keeps one point per (dataset, edge, method), which shows the
+# spread but lets transition-level variation drive the slope.
+iccoh_point_unit: dataset      # dataset | transition
+# How cells are collapsed at each stage. `median` (median of the per-transition
+# medians, and of the per-cluster medians) is robust to the bimodal per-cell
+# distributions that make a mean misleading; `mean` reproduces the earlier
+# behaviour. CBDir is collapsed per transition, ICCoh per source cluster with
+# each cell counted once, so a fork like Pre-endocrine -> {Alpha, Beta, Delta,
+# Epsilon} does not enter the coherence side four times.
+iccoh_aggregator: median       # median | mean
+# Colour is the method, shape is the dataset — the same encoding as the
+# stability panels. Both keys sit below the figure rather than inside the axes.
+iccoh_dataset_markers: true
+iccoh_marker_size: null        # null -> 7.5 with shapes, 5 without
+iccoh_legend_ncol: null        # null -> methods split over two rows
+iccoh_dataset_legend_ncol: null
+iccoh_bootstrap: 5000          # 0 disables the residual CIs
+iccoh_seed: 0
+iccoh_figsize: null
+iccoh_title: null
+# Output: ..._cbdir_vs_iccoh.csv (per-method residual summary, slope, R2) and
+# ..._cbdir_vs_iccoh_points.csv (the plotted points with fitted values).
+#
+# Which ICCoh is the covariate. `iccoh` is whatever compute_cbdir_run.py wrote
+# (iccoh_space, default gene_confidence); the axis label names it. Other stored
+# columns can be used without recomputing: iccoh_embedding (velocity_pca),
+# iccoh_owngenes, iccoh_sharedgenes, iccoh_gene_raw, iccoh_gene_vst.
+iccoh_column: iccoh
+# If the loaded tables disagree on what `iccoh` is (space / version / graph /
+# gene set differ across datasets or methods), the fit is skipped and the
+# offending pairs are printed. true fits anyway.
+iccoh_allow_mixed: false
+
+# --- gene-count bias of gene-space ICCoh ---------------------------------------
+# Reads {dataset}_iccoh_genes.csv and {dataset}_iccoh_gene_clusters.csv written
+# by compute_cbdir_run.py (iccoh_space: gene_confidence). Unit: (dataset, method);
+# slopes are ICCoh per doubling of the gene count; CIs resample datasets.
+#   A1  ICCoh(own genes) ~ log2 n + dataset          between methods; confounded
+#                                                    with method quality
+#   A2  ... + method fixed effects                   within a method, across datasets
+#   B   ICCoh(own) - ICCoh(shared) ~ log2(own/shared) paired, same velocities:
+#                                                    what intersection_mode changes
+#   C   random own-gene subsets, slope on log2 k     count alone; the causal test
+# Rankings own vs shared and own vs count-matched ("min") are reported as
+# Kendall tau per dataset. Skipped in the alignment replay.
+gene_bias_test: true
+gene_bias_plot: true
+gene_bias_x: n_genes             # n_genes | eff_genes (x axis for A)
+gene_bias_aggregator: null       # null -> iccoh_aggregator
+gene_bias_bootstrap: 2000        # 0 disables the CIs
+gene_bias_seed: 0
+gene_bias_min_within_sd: 0.05    # A is "not identified" below this many doublings
+                                 # of gene-count spread left after fixed effects
+gene_bias_marker_size: 7.0
+gene_bias_figsize: null
+gene_bias_title: null
+# Output: ..._iccoh_gene_bias.png/.pdf, ..._iccoh_gene_bias.csv (the tests),
+# ..._iccoh_gene_bias_points.csv, ..._iccoh_gene_bias_per_method.csv,
+# ..._iccoh_gene_bias_ranks.csv, ..._iccoh_gene_dose.csv
+
+# --- stability: level AND consistency, with no reference method -------------
+# Summarises every method on the cells it actually scored, so the statements are
+# about all methods at once rather than about offsets from one of them. "Which
+# method never fails a dataset" is not expressible as a set of pairwise offsets,
+# because each offset is computed on a different subset of cells.
+#
+# CAUTION built into the design: spread on its own is a trap — a uniformly
+# mediocre method has a small SD and a small variance component while being the
+# worst method in the panel. Every dispersion statistic here is therefore reported
+# beside a level statistic, and the headline endpoint is the WORST-DATASET MEAN:
+# one number, impossible to win by being uniformly bad, and it states the claim
+# ("it works everywhere") directly.
+stability_test: true
+stability_plot: true
+iccoh_stability_plot: true
+iccoh_stability_per_dataset_plot: true
+iccoh_stability_aggregator: null   # null → iccoh_aggregator
+iccoh_stability_vrange: null       # e.g. [0, 1] to fix the colour range across runs
+# Panels, in order. `dataset_dots` is the main-text panel: one dot per dataset per
+# method, the mean ticked, the worst dataset drawn large and labelled with how
+# many datasets and transitions are above zero. `mean_sd` puts mean against
+# between-dataset SD with constant mean-minus-SD iso-lines, so "high and stable"
+# is a direction on the plot. Use [dataset_dots] alone for a single figure panel.
+stability_panels: [dataset_dots, mean_sd]
+stability_order: worst_dataset   # worst_dataset | mean | specified
+# Left panel dot style. false: every dataset is the same round dot. true: each
+# dataset gets its own marker SHAPE (colour still encodes the method), so a dot
+# can be traced back to the dataset it came from without a second figure; the
+# worst dataset keeps the enlarged, dark-outlined marker. A dataset legend is
+# added to the panel.
+stability_dataset_markers: true
+# Marker cycle, applied in dataset order. Any matplotlib marker code works.
+stability_dataset_marker_list: ["o", "s", "^", "D", "v", "P", "X", "<", ">", "p", "h", "*"]
+# Optional explicit dataset -> marker pins (datasets not listed take the cycle),
+# e.g. to keep one dataset's shape fixed across figure revisions.
+# stability_dataset_markers_map:
+#   pancreas: "o"
+#   10x_mouse_brain: "s"
+stability_dataset_legend_loc: outside       # below the panel, where it cannot cover dots;
+                                            # any matplotlib loc | outside | none
+stability_dataset_legend_ncol: 1
+# Paired Wilcoxon of each method against `reference_method` with the DATASET as
+# the unit of replication — exactly what the left panel draws: one value per
+# dataset per method (mean over that dataset's transitions, Fisher z), paired
+# because all methods are scored on the same datasets. FDR-adjusted across the
+# non-reference methods and appended to each row's label as
+# `datasets · transitions above zero · p-adj`.
+#
+# CAUTION: with n datasets the smallest attainable two-sided p is 2 / 2**n
+# (0.016 at n = 7), so a non-significant result here counts the datasets, it does
+# not show equivalence. This is the most conservative test in the pipeline and is
+# deliberately weaker than the cell- and transition-level tests; report it as the
+# dataset-level check, not as the headline inference. Note also that each method's
+# per-dataset mean comes from the cells that method itself scored, so this pairs
+# dataset summaries, not cells.
+stability_annotate_p_adj: true
+stability_wilcoxon_alternative: two-sided  # two-sided | greater | less
+stability_wilcoxon_zero_method: wilcox     # scipy zero_method for all-zero diffs
+stability_wilcoxon_min_datasets: 3         # fewer paired datasets -> not tested
+stability_p_adjust: null                   # null -> falls back to `p_adjust`
+stability_scale: native          # native -> tanh back to CBDir units; z -> Fisher z
+stability_annotate: true
+stability_figsize: null
+stability_title: null
+# Dataset cluster bootstrap for P(best worst-dataset), P(best mean-SD),
+# P(smallest SD). 0 disables it. With ~7 datasets these are coarse — report them
+# as probabilities, never as p-values.
+stability_bootstrap: 5000
+stability_seed: 0
+# Output: ..._stability.csv carries mean/median/IQR over transitions, SD and
+# worst/best over datasets, counts above zero with an exact binomial p, the
+# between-dataset variance component tau with the within-dataset sigma and ICC
+# and, when a reference_method is set, the dataset-level paired Wilcoxon columns
+# (n_datasets_paired, median_diff_vs_ref, w_stat_vs_ref, p_wilcoxon_vs_ref,
+# p_wilcoxon_vs_ref_adj),
+# (which separate real heterogeneity from the noise of estimating a dataset mean
+# from a few transitions), and the bootstrap probabilities. Statistics are
+# computed on the Fisher-z scale; *_native columns are the back-transformed
+# values for reporting.
+
+# --- stability, summary version: heatmap + mean-vs-SD scatter ----------------
+# The same per-dataset means as the dot panel, drawn for reading values off:
+#   ..._stability_heatmap{suffix}.png/pdf      methods x datasets, mean CBDir in
+#        each cell (diverging blue = wrong way, red = right way), a "datasets with
+#        score > 0" column, and each method's mean +/- SD across datasets.
+#   ..._stability_mean_vs_sd{suffix}.png/pdf   mean (y) against SD (x) across
+#        datasets, one dot per method in its method_colors colour; up and to the
+#        left is high and consistent.
+# The mean and SD on both are computed from the numbers printed in the cells
+# (CBDir units when stability_scale is native), so they can be checked by eye;
+# the _stability.csv summaries are on the Fisher-z scale and differ slightly.
+# The per-dataset stability folder gets the same pair, one column per transition.
+stability_summary_plot: true
+stability_per_dataset_summary_plot: true   # falls back to stability_summary_plot
+stability_summary_heatmap: true
+stability_summary_scatter: true
+stability_summary_order: mean              # mean | mean_minus_sd | stability (= stability_order)
+# Method(s) to emphasise: bold row label, larger marker, and the suffix appended.
+stability_summary_highlight: nSV          # e.g. nSV-cell  or  [nSV-cell, nSV-global]
+stability_summary_highlight_suffix: " (our method)"
+# Optional display names. Datasets otherwise become "Human bonemarrow" from
+# "human_bonemarrow" (set stability_summary_prettify_names: false to keep raw).
+stability_summary_method_labels: null      # e.g. {nSV-cell: nSV}
+stability_summary_dataset_labels: {mouse_pancreas: Mouse pancreas, human_bonemarrow: Human bone marrow, mouse_dentategyrus: Mouse dentate gyrus, mouse_erythroid: Mouse erythroid, mouse_organoid: Mouse intestinal organoid, human_erythroid: Human erythroid, mouse_neural: Mouse embryonic cortex}    # e.g. {human_bonemarrow: Human bone marrow}
+stability_summary_prettify_names: true
+# Axis wording. null -> "correctness of transitions (CBDir)", so the axes read
+# "Mean correctness of transitions (CBDir) across datasets" and
+# "SD of correctness of transitions across datasets (consistency)".
+stability_summary_value_label: null
+# Cluster the heatmap columns (datasets; transitions in the per-dataset figures)
+# by how the methods score on them, with a dendrogram on top and the names moved
+# underneath. Order only: no value changes. euclidean groups columns by level and
+# pattern (an easy dataset sits with easy ones); correlation groups them by the
+# method ranking pattern alone. Needs >= 3 columns.
+stability_summary_cluster_columns: true
+stability_summary_cluster_metric: euclidean   # euclidean | correlation | any scipy pdist metric
+stability_summary_cluster_linkage: average    # average | complete | ward | single
+stability_summary_vlim: null               # colour range +/-; null -> max |value|, rounded up to 0.05
+stability_summary_heatmap_figsize: null    # null -> sized from methods x datasets
+stability_summary_scatter_figsize: null    # null -> [7.4, 5.6]
+stability_summary_heatmap_title: null
+stability_summary_scatter_title: null
+
+# --- per-dataset stability: the same frame, one level down ------------------
+# One figure per dataset, drawn exactly like the cross-dataset stability figure
+# except that each point is a TRANSITION of that dataset rather than a dataset.
+# This is the "where is the method better or worse" view: a method that wins a
+# dataset on one easy edge looks different here from one that is ahead on all of
+# them, and a dataset where it is behind stops being an unexplained low dot in
+# the main figure. Files land in `stability_per_dataset_subdir` as
+# {save_path}_stability_{dataset}{suffix}.png/pdf, and every (dataset, method)
+# row is written to ..._stability_per_dataset.csv.
+#
+# CAUTION: the paired Wilcoxon here runs over a single dataset's transitions, of
+# which there are usually a handful. With n transitions the smallest attainable
+# two-sided p is 2 / 2**n — 0.25 at n = 3, 0.125 at n = 4, 0.0625 at n = 5 — so
+# most per-dataset panels CANNOT reach 0.05 no matter how large the effect is.
+# Read `n_transitions_positive` and the sign of `median_diff_vs_ref`; leave the
+# inference to the pooled cell- and transition-level tests. Datasets with fewer
+# than `stability_per_dataset_min_transitions` paired transitions are not tested
+# at all rather than tested badly.
+stability_per_dataset_test: true
+stability_per_dataset_plot: true
+stability_per_dataset_subdir: stability_per_dataset
+stability_per_dataset_min_transitions: 3
+# FDR family: `dataset` corrects across the methods inside one dataset (the
+# family one panel shows); `global` corrects across every (dataset, method) cell
+# at once, which is stricter and right if the whole grid is read as one screen.
+stability_per_dataset_p_adjust_scope: dataset
+# These fall back to their cross-dataset counterparts when left null/unset:
+# stability_per_dataset_panels: [dataset_dots, mean_sd]
+# stability_per_dataset_order: worst_dataset   # worst (by worst transition) | mean | specified
+# stability_per_dataset_markers: true          # shape = transition; inherits stability_dataset_markers
+# stability_per_dataset_title: null            # null -> "<dataset> — consistency across its N transitions"
+# Transition names are long, so this legend defaults BELOW the panel rather than
+# inside it. Same values as stability_dataset_legend_loc.
+stability_per_dataset_legend_loc: outside
+
+# --- left-out cells: is the paired subset representative? -------------------
+# Every paired test here conditions on the cells the method and the reference
+# BOTH scored, which is only fair if the cells left out are exchangeable with the
+# cells kept. This checks that directly.
+#
+# Per (dataset, transition, method) the cells split three ways: scored by both, by
+# the reference only, by the method only. The comparison is made WITHIN one
+# method's own scores — the reference's left-out cells against the reference's
+# retained cells, and the method's against its own — so it asks only about which
+# cells were dropped, never about which method is better.
+#   delta_z > 0  the discarded cells scored HIGHER than the retained ones, i.e.
+#                the paired analysis sees a pessimistic subset for that method
+#   delta_z ~ 0  the restriction is uninformative and the paired results stand
+# Note a cell can be missing either because the method never scored it or because
+# it had <= 2 target-type neighbours; with include_skipped off in the compute
+# pipeline those are indistinguishable (recorded as n_target_neighbors_known).
+leftout_test: true
+leftout_plot: true
+leftout_by_method_plot: true
+leftout_coverage_plot: true
+leftout_subdir: leftout_plots
+# Skip a side of a transition unless both groups have at least this many cells —
+# a Mann-Whitney on 3 cells is noise, and the transition-level summary is what
+# carries the claim anyway.
+leftout_min_cells: 10
+# Correction family for the per-transition tests: the transitions of one dataset,
+# for one method and one side. Defaults to the global `p_adjust`.
+leftout_p_adjust: null
+# Which p to print on the per-transition figure: p_adj (default) or p.
+leftout_annotation: p_adj
+leftout_figsize: null            # per-method figure; null -> scales with transitions
+leftout_summary_figsize: null    # the forest
+leftout_coverage_figsize: null   # % dropped vs delta scatter
+# Outputs: ..._leftout.csv (one row per dataset/transition/method/side),
+#          ..._leftout_summary.csv (transition-level, one row per method/side),
+#          ..._leftout.png (forest), ..._leftout_coverage.png,
+#          <leftout_subdir>/<stem>_<method>_leftout.png (four boxes per transition;
+#          hatched = left out). The per-transition tests are CELL-level and so
+#          pseudoreplicated: the transition-level summary is the reportable layer.
+
+# --- diagnostic: cells per transition vs CBDir -----------------------------
+# One point per (dataset, transition, method): colour = method, marker = dataset,
+# x = cells scored (log by default). Shows whether transitions scored on few cells
+# behave differently — which matters because the number of scorable cells is
+# itself method-dependent (only cells with >2 target-type neighbours qualify).
+# A non-zero slope means part of any method difference is a cell-count effect.
+cells_vs_cbdir_plot: true
+diag_logx: true
+diag_figsize: [11, 7]
+
+pool_unit: dataset
+
+# What to print above each box on the pooled figure. Any of:
+#   stars   -> ****/***/**/*/ns from the adjusted headline p
+#   p       -> raw headline p-value, numeric (marked "(raw)" on the figure)
+#   p_adj   -> adjusted headline p-value, numeric (default)
+# Every frame's p is multiplicity-adjusted with the same method, so the headline
+# and secondary lines on the figure are directly comparable. Both lines carry
+# their frame's short label (ds-rand / ds-fixed / edge) so neither can be read as
+# "the" p-value.
+#   offset  -> the offset in CBDir units
+#   pwin    -> P(method > reference) (default)
+#   n       -> number of transitions
+#   wilcox  -> paired signed-rank p over transitions, plus its rank-biserial r
+# Numeric p-values are preferred over stars: "p=3e-9" and "p=0.04" are both one
+# star short of meaningless when collapsed to "*" vs "****".
+pooled_annotation: [p_adj, pwin]
+pooled_annotation_fontsize: 7.5
+pooled_headroom: 0.30          # annotation headroom, as a FRACTION of the data span
+
+# Also print a second pooling frame's p-value, so the figure shows both the
+# generalising and the conditional answer rather than hiding the one you did not
+# headline. "auto" picks whichever of dataset / dataset_fixed is not the headline;
+# set to null to show only the headline frame.
+pooled_secondary_frame: auto
+
+forest_show_p: true            # numeric p on the forest plot instead of bare stars
+
+# The pooled figure is emitted once per order variant, as the aggregated one is:
+#   specified -> method_groups / method_order
+#   ranked    -> methods by decreasing median CBDir across all transitions, so
+#                the boxes read best-to-worst left-to-right
+# Ranked files get a "_ranked" suffix.
+pooled_order_variants: [specified, ranked]
+
+# The pooled figure is also emitted once per annotation variant:
+#   default  -> the pooled_annotation fields below (parametric t frames)
+#   wilcoxon -> ONLY the paired signed-rank p over transitions, plus its effect
+#               size. A one-sample Wilcoxon on the per-transition mean differences:
+#               no distributional assumption, a transition is one observation.
+#               Note it treats transitions as exchangeable, so like the `edge`
+#               frame it does not account for dataset clustering — and below ~6
+#               transitions the two-sided exact test cannot reach p < 0.05 at all,
+#               which is reported in `notes` rather than as a misleading number.
+pooled_annotation_variants: [default, wilcoxon]
+
+pooled_figsize: [11, 7]
+pooled_show_points: true       # each point is one transition's mean CBDir
+pooled_title: "CBDir per transition, pooled across datasets"
+
+# per_method -> for each method, fit on the {reference, method} rows with method
+#               as a two-level fixed effect and a cell random intercept.
+#               This is the default: the cell effect stays identifiable (two rows
+#               per cell), residual scale is estimated per pair rather than
+#               shared, and it works with a single non-reference method.
+# joint      -> all methods in one model, reference as the baseline category.
+#               Use when you need non-reference vs non-reference contrasts.
+# slope      -> value_m ~ value_ref with (1|edge); reports a slope and tests
+#               slope = 1. No cell random effect (one row per cell).
+model: per_method
+
+# fixed  -> C(edge) as a fixed effect, groups = obs_id (default).
+# random -> groups = edge with an obs_id variance component.
+# The two agree to 4 dp on offset, SE and p — method is a within-edge, within-cell
+# contrast either way — but fixed recovers sigma_cell accurately and avoids a
+# variance-component design of thousands of columns per edge group.
+edge_effect: fixed
+
+# CBDir is a bounded cosine, so the model is fit on the Fisher-z scale.
+# Offsets are reported in z units (offset_z, with the p-value) and in CBDir units
+# at the reference's own level (offset_native). Plots always show raw CBDir.
+transform: atanh               # atanh | none | logit
+transform_eps: 1.0e-6          # clip before arctanh; arctanh(+-1) is infinite
+
+reml: true
+p_adjust: fdr_bh               # fdr_bh | holm | none. BH is the sensible default for
+                               # an exploratory benchmark; Holm across 8+ methods is
+                               # strict enough to hide real differences.
+forest_plot: true
+forest_scale: native           # native (CBDir units) | z
+diagnostics_plot: true

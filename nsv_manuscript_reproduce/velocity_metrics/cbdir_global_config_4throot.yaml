@@ -1,0 +1,158 @@
+# =============================================================================
+# Cross-Boundary Direction (CBDir) — Global Aggregator Config
+#   python compute_cbdir_run.py cbdir_global_config_template.yaml
+#
+# Maps method names to their per-method YAML configs, and declares the
+# dataset-level transition graph (cluster_edges) and optional cluster
+# relabelling (cluster_map) once, so every method scores the same edges.
+#
+# Per dataset the pipeline writes three tables to that dataset's dir_path:
+#   {dataset}_cbdir_long{suffix}.csv          one row per (method, edge, cell)
+#   {dataset}_cbdir_wide{suffix}.csv          (cell_barcode, edge) x {method}_cbdir
+#   {dataset}_cbdir_edge_summary{suffix}.csv  per (edge, method) statistics
+# CSV is always written; Parquet is optional.
+# =============================================================================
+
+# Detailed run log (optional). If omitted, a timestamped file
+# `cbdir_YYYYmmdd_HHMMSS.log` is created in the working directory.
+log_file: ./logs/cbdir_4throot.log
+
+# Also save each output table in Parquet format (default false).
+save_parquet: false
+
+# Optional suffix appended to all output filenames (e.g. "_v2").
+str_suffix: "_4throot"
+
+iccoh_min_neighbors: 3
+min_target_neighbors: 3
+iccoh_space: gene_confidence
+iccoh_confidence_version: signed_4throot_scvelo
+iccoh_gene_subsample: null      # skips the random-subset draws, which are the slow part
+intersection_mode: false
+
+defaults:
+  recompute_graph: false     # If true, recompute neighbors + velocity_graph; default false uses existing graph in h5ad
+  n_neighbors: 30            # Neighbors for graph construction (only if recompute_graph is true)
+  rep: X_pca                 # Representation for neighbor computation (only if recompute_graph is true)
+  approx: false              # Approximate velocity graph? (only if recompute_graph is true)
+  sqrt_transform: true       # Sqrt transform in velocity graph? (only if recompute_graph is true)
+  # gene_query: "(fit_r2_complete_mu >= 0.01 & fit_r2_complete_var >= 0.01) & (qvl_cv_r2_geom_up > 0.0 | qvl_cv_r2_geom_down > 0.0) & ((qvl_curvature_a_up < 0.0 | qvl_curvature_a_up.isna()) | (qvl_curvature_a_down > 0.0 | qvl_curvature_a_down.isna())) & (dispersions_norm >= 1.0)"           # Optional pandas query on adata.var to subset genes (only if recompute_graph is true)
+  gene_query: "reliable_velo_gene == True" 
+  
+  # Scaled velocity confidence & gene filtering controls (velocity_confidence_scaled.py)
+  use_confidence_report: true # If true, runs confidence_report evaluating stock, mad, zscore, signed_sqrt_mad, spearman
+  use_genes: "all"           # Gene set to evaluate: "all" or specific var column / gene list
+  intersection_mode: false    # If true, pre-parses all methods per dataset and uses common non-NaN velocity genes
+  gene_names_col: null       # Optional column in adata.var containing gene symbols for cross-method intersection
+  apply_gene_query_always: true
+  root_power: 4.0
+  str_suffix: "_4throot"
+
+# ---------------------------------------------------------------------------
+# Dataset-level settings. `cluster_edges` is required for every dataset that
+# appears in a per-method config, unless that method config supplies its own.
+#
+# `cluster_map` is optional: it remaps the unique levels of the cluster column
+# onto custom levels BEFORE edges are matched. Many-to-one merging is supported.
+# Levels absent from the map are kept as-is unless cluster_map_drop_unmapped is
+# true, in which case they become NaN and drop out of every edge. The original
+# obs column is never modified.
+# ---------------------------------------------------------------------------
+datasets:
+
+  mouse_pancreas:
+    cluster_edges:
+      - ["Ngn3 low EP",  "Ngn3 high EP"]
+      - ["Ngn3 high EP", "Pre-endocrine"]
+      - ["Pre-endocrine", "Delta"]
+      - ["Pre-endocrine", "Beta"]
+      - ["Pre-endocrine", "Epsilon"]
+      - ["Pre-endocrine", "Alpha"]
+    # cluster_map: null            # no relabelling for this dataset
+    
+  human_bonemarrow:
+    cluster_map:
+      "Mono_1": "Mono"
+      "Mono_2": "Mono"
+    cluster_map_drop_unmapped: false   # levels not listed above are kept as-is
+    cluster_edges:
+      - ["HSC_1", "HSC_2"]
+      - ["HSC_2", "Ery_1"]
+      - ["Ery_1", "Ery_2"]
+      - ["HSC_1", "Mega"]
+      - ["HSC_2", "Precursors"]
+      - ["Precursors", "Mono"]
+      - ["Precursors", "DCs"]
+    # cluster_map: null            # no relabelling for this dataset
+
+  mouse_dentategyrus:
+    cluster_map:
+      "ImmGranule1":  "ImmGranule"     # perinatal RG and juvenile/adult RGL
+      "ImmGranule2":  "ImmGranule"     # perinatal RG and juvenile/adult RGL
+    cluster_edges:
+      - ["RadialGlia", "nIPC"]
+      - ["nIPC", "Nbl1"]
+      - ["Nbl1", "Nbl2"]
+      - ["Nbl2", "ImmGranule"]
+      - ["ImmGranule", "Granule"]
+      # pyramidal neurons: second neuronal lineage splitting off at the neuroblast stage
+      - ["Nbl1", "CA"]            # (verify) branch point could be Nbl1 or Nbl2
+      - ["CA", "CA1-Sub"]
+      - ["CA", "CA2-3-4"]
+      # glial lineages from radial glia
+      - ["RadialGlia", "ImmAstro"]
+      - ["RadialGlia", "GlialProg"]
+      - ["GlialProg", "OPC"]
+
+  mouse_neural:
+    cluster_map:
+      "0h":  "0min"
+      "15h":  "15min"
+      "30h":  "30min"
+      "60h":  "60min"
+      "120h":  "120min"
+    cluster_edges:
+      - ["0min", "15min"]
+      - ["15min", "30min"]
+      - ["30min", "60min"]
+      - ["60min", "120min"]
+      
+      
+  mouse_erythroid:
+    cluster_edges:
+      - ["Blood progenitors 1", "Blood progenitors 2"]
+      - ["Blood progenitors 2", "Erythroid1"]
+      - ["Erythroid1", "Erythroid2"]
+      - ["Erythroid2", "Erythroid3"]
+      
+      
+  mouse_organoid:
+    cluster_edges:
+      - ["Stem cells", "TA cells"]
+      - ["TA cells", "Enterocytes"]
+      # secretory lineages
+      - ["Stem cells", "Goblet cells"]
+      - ["Stem cells", "Paneth cells"]
+      # - ["Stem cells", "Enteroendocrine progenitor"]       # (verify) names may differ
+      - ["Enteroendocrine progenitor", "Enteroendocrine"]
+      # - ["Stem cells", "Tuft cells"]                       # only if the cluster exists
+      
+  human_erythroid:
+    cluster_edges:
+      - ["MEMP", "Early Erythroid"]
+      - ["Early Erythroid", "Mid  Erythroid"]
+      - ["Mid  Erythroid", "Late Erythroid"]
+      
+
+# ---------------------------------------------------------------------------
+# Map of method_name -> path to that method's YAML config.
+# ---------------------------------------------------------------------------
+methods:
+  scVelo-dynamical: ./cbdir_config_scvelo_4throot.yaml
+  scVelo-stochastic: ./cbdir_config_scvelo_stoch_4throot.yaml
+  veloVI: ./cbdir_config_velovi_4throot.yaml
+  TFvelo: ./cbdir_config_tfvelo_4throot.yaml
+  celldancer: ./cbdir_config_celldancer_4throot.yaml
+  uniTVelo: ./cbdir_config_unitvelo_4throot.yaml
+  veloVAE: ./cbdir_config_velovae_4throot.yaml
+  nSV: ./cbdir_config_nsv_cell_4throot.yaml
