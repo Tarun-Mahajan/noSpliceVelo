@@ -133,25 +133,74 @@ Primary accessions: pancreas GEO GSE132188; bone marrow Human Cell Atlas
 ArrayExpress E-MTAB-6967; organoid GEO GSE128365; hippocampus GEO GSE104323;
 human erythroid ArrayExpress E-MTAB-7407.
 
-### noSpliceVelo input objects
+### Processed noSpliceVelo objects (figshare)
 
-The processed `adata_pan.h5ad` objects used for the manuscript (output of
-step 0) are deposited on figshare, so step 1 can start without re-running the
-preprocessing:
+The noSpliceVelo results for all seven datasets are deposited on figshare as one
+archive, `adata_nosplicevelo_streams.tar.gz` (about 18 GB):
 
-| Dataset | Cells | Genes kept by model selection (step 1) | figshare |
-|---|---|---|---|
-| Mouse pancreas | 3,696 | 1,994 | `<figshare link: to be added>` |
-| Human bone marrow | 5,719 | 1,813 | `<figshare link: to be added>` |
-| Mouse embryonic cortex | 3,060 | 1,975 | `<figshare link: to be added>` |
-| Mouse gastrulation erythropoiesis | 9,815 | 1,973 | `<figshare link: to be added>` |
-| Mouse intestinal organoid | 3,831 | 1,840 | `<figshare link: to be added>` |
-| Mouse hippocampus | 18,213 | 1,997 | `<figshare link: to be added>` |
-| Human fetal-liver erythroid | 35,877 | 1,991 | `<figshare link: to be added>` |
+**figshare:** https://doi.org/10.6084/m9.figshare.34112379
 
-Save each as `data/<data folder>/adata_pan.h5ad`. For the cortex, nSV used
-the total counts of the metabolic-labelling object of the same experiment
-(3,060 cells), and the other methods used the splicing object above
+The archive holds one h5ad per dataset. Each is the object written by step 4
+(`generate_velo_stream_run.py`), so it already contains steps 1–4: both VAEs,
+the velocities, the gene scores, the velocity-gene filter, the velocity graph
+and the pseudotime. Steps 5–8 and the plots can be run on it without a GPU and
+without retraining.
+
+| File in the archive | Dataset | Cells | Genes (after model selection) | Velocity genes (`reliable_velo_gene`) | Place at (to run steps 5–8 with the template configs) |
+|---|---|---|---|---|---|
+| `adata_nosplicevelo_stream_Pancreas.h5ad` | Mouse pancreas | 3,696 | 1,994 | 1,034 | `data/Pancreas_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote/` |
+| `adata_nosplicevelo_stream_BoneMarrow.h5ad` | Human bone marrow | 5,719 | 1,813 | 862 | `data/BoneMarrow_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote/` |
+| `adata_nosplicevelo_stream_dynamo.h5ad` | Mouse embryonic cortex | 3,060 | 1,975 | 482 | `data/dynamo_mouse_neural_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote/` |
+| `adata_nosplicevelo_stream_mouse.h5ad` | Mouse gastrulation erythropoiesis | 9,815 | 1,973 | 303 | `data/mouse_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote_without_murk/` |
+| `adata_nosplicevelo_stream_human.h5ad` | Human fetal-liver erythroid | 35,877 | 1,991 | 884 | `data/human_erythroid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote_without_murk/` |
+| `adata_nosplicevelo_stream_unitvelo_organoid.h5ad` | Mouse intestinal organoid | 3,831 | 1,840 | 300 | `data/unitvelo_mouse_organoid_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote/` |
+| `adata_nosplicevelo_stream_dentategyrus.h5ad` | Mouse hippocampus | 18,213 | 1,997 | 1,287 | `data/dentategyrus_new_studentT_time/nosplicevelo_score_gene_fit_v3_4throot_type1_vote/` |
+
+The configs read each file as `adata_nosplicevelo_stream.h5ad` in the folder
+shown, so rename it when placing it:
+
+```bash
+tar -xzf adata_nosplicevelo_streams.tar.gz          # from nsv_manuscript_reproduce/
+V=nosplicevelo_score_gene_fit_v3_4throot_type1_vote
+place() { mkdir -p "data/$2" && mv "$1" "data/$2/adata_nosplicevelo_stream.h5ad"; }
+place adata_nosplicevelo_stream_Pancreas.h5ad          Pancreas_studentT_time/$V
+place adata_nosplicevelo_stream_BoneMarrow.h5ad        BoneMarrow_studentT_time/$V
+place adata_nosplicevelo_stream_dynamo.h5ad            dynamo_mouse_neural_studentT_time/$V
+place adata_nosplicevelo_stream_mouse.h5ad             mouse_erythroid_studentT_time/${V}_without_murk
+place adata_nosplicevelo_stream_human.h5ad             human_erythroid_studentT_time/${V}_without_murk
+place adata_nosplicevelo_stream_unitvelo_organoid.h5ad unitvelo_mouse_organoid_studentT_time/$V
+place adata_nosplicevelo_stream_dentategyrus.h5ad      dentategyrus_new_studentT_time/$V
+```
+
+What each object contains, as written by the scripts of steps 1–4:
+
+| Slot | Fields | Written by |
+|---|---|---|
+| `X`, `layers['counts']`, `layers['log_counts']` | Raw total counts (`counts`) and log-normalised expression; `spliced`/`unspliced` too where the published object has them (not used by nSV) | step 0 |
+| `layers['mu_naive_smooth']`, `layers['var_naive_smooth']` | Naive kNN mean and variance of the raw counts | step 1 |
+| `layers['mu_scvi']`, `layers['var_scvi']`, `layers['mu_scvi_smooth']`, `layers['var_scvi_smooth']` | Mean and variance from the first VAE (10 posterior samples), and after kNN smoothing (k = 30, first-VAE latent space): the data the second VAE fits | step 1 |
+| `layers['branch_assignment']`, `layers['prior_pi_up']` | Empirical up/down branch assignment and branch prior | step 1 |
+| `layers['velocity_mu_vote']` | **The velocity used in the manuscript**: per-sample most probable state, its velocity of the mean, averaged over 10 samples | step 2 |
+| `layers['velocity_mu']`, `layers['velocity_var']`, `layers['mu_fit']`, `layers['var_fit']` | Velocities and fitted moments of the most probable state of the sample-averaged posterior | step 2 |
+| `layers['velocity_*_soft']`, `layers['*_tempered2']`, `layers['velocity_*_vote_knn']`, `layers['velocity_var_vote']` | Other state reductions (diagnostics) | step 2 |
+| `layers['time_latent']` | Latent time per cell and gene | step 2 |
+| `var` | `dispersions_norm` and the other HVG columns; `best_fit` (line, parabola, ellipse) and fit statistics of the model selection; kinetic parameters (`mu_0_gene`, `mu_up_f_gene`, `mu_down_f_gene`, their variances, `time_switch`, `gamma_mRNA`); the goodness-of-fit scores (`fit_r2_complete_*`, `qvl_*`, `up_bow_*`, `down_bow_*`, `sep_*`); `reliable_velo_gene` (the velocity genes); `MURK_gene` for the erythroid datasets | steps 0–4 |
+| `obs` | The published annotations (cell type or time point), and `velocity_mu_vote_pseudotime` | published, step 4 |
+| `obsm` | `X_pca`, the published `X_umap`, `X_latent` (first-VAE latent space), `velocity_mu_vote_umap` | steps 0–4 |
+| `obsp`, `uns` | kNN graph (k = 30 on `X_pca`), velocity graph `velocity_mu_vote_graph` / `_graph_neg` (4th-root transform, velocity genes only), `velocity_mu_vote_params` | step 4 |
+
+For example, the velocity stream:
+
+```python
+import anndata as ad, scvelo as scv
+adata = ad.read_h5ad("adata_nosplicevelo_stream_Pancreas.h5ad")
+scv.pl.velocity_embedding_stream(adata, vkey="velocity_mu_vote", basis="umap", color="clusters")
+```
+
+The trained models are not in the archive. To retrain from scratch, rebuild
+`adata_pan.h5ad` from the original objects (step 0) and start at step 1. For the
+cortex, nSV used the total counts of the metabolic-labelling object of the same
+experiment (3,060 cells), and the other methods used the splicing object above
 (3,066 cells).
 
 The annotated transitions are listed once, in `velocity_metrics/cbdir_global_config_4throot.yaml`.
