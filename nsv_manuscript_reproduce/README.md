@@ -1,5 +1,7 @@
 # noSpliceVelo: code for the manuscript
 
+[![DOI](https://zenodo.org/badge/776338571.svg)](https://doi.org/10.5281/zenodo.23222847)
+
 This folder, `nsv_manuscript_reproduce/`, holds the code behind the analyses in
 
 > T. Mahajan and S. Maslov. noSpliceVelo infers gene expression dynamics without separating unspliced and spliced transcripts. *bioRxiv* 2024.08.08.607261 (2024). https://doi.org/10.1101/2024.08.08.607261
