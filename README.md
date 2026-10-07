@@ -1,5 +1,7 @@
 # noSpliceVelo
 
+[![DOI](https://zenodo.org/badge/776338571.svg)](https://doi.org/10.5281/zenodo.23222847)
+
 > **Use [`nsv_manuscript_reproduce/`](nsv_manuscript_reproduce/).** It holds the
 > latest noSpliceVelo code, the scripts that reproduce every analysis in the
 > manuscript, and the instructions for running them. Start with
